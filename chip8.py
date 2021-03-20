@@ -10,51 +10,69 @@ import numpy
 import pygame
 
 pygame.init()
+screen = pygame.display.set_mode([500, 500])
 
 class Memory:
     def __init__(self):
-        self.memory = numpy.array([0] * 4096, dtype=numpy.uint8)
-    
+        self.buffer = bytearray([0] * 4096)
     def read(self, addr):
-        return self.memory[ addr ]
-    
+        return self.buffer[addr]
     def write(self, addr, value):
-        self.memory[ addr ] = value
-    
+        self.buffer[addr] = value
     def dump(self):
         pass
 
 class CPU:
-
-    
-    
     def __init__(self):
-        self.v  = numpy.array([0] * 16, dtype=numpy.uint8)
+        self.v  = bytearray([0] * 16)
         self.i  = 0
         self.pc = 0x200
         self.sp = 0
 
-        self.stack  = numpy.array([0] * 16, dtype=numpy.uint8)
-        self.timers = {
+        self.stack  = bytearray([0] * 16)
+        self.timer = {
             'delay' : 0,
             'sound' : 0
         }
 
-    def dump_registers(self):
+    def dump(self):
         print(f'v:{self.v}\n\
                 \ri:{hex(self.i)}\n\
                 \rpc:{hex(self.pc)}\n\
                 \rsp:{hex(self.sp)}\n\
                 \rstack:{self.stack}')
 
+class Display:
+    def __init__(self, surface):
+
+        self.cols = 128
+        self.rows = 128 
+
+        self.scale = 5
+
+        self.buffer = [ [0 for x in range(0, 128)] for y in range(0, 128) ]
+        self.screen = surface
+    
+    def render(self):
+        for row in range(0, len(self.buffer)):
+            for col in range(0, len(self.buffer[row])):
+                if self.buffer[row][col]:
+                    pygame.draw.rect(self.screen, 0xffffff , (
+                        col * self.scale, 
+                        row * self.scale, 
+                        self.scale, 
+                        self.scale
+                    ))
+    def clear(self):
+        self.buffer = [ [0 for x in range(0, 128)] for y in range(0, 128) ]
 
 class Chip8:
     def __init__(self):
-        self.memory = Memory()
-        self.cpu    = CPU()
-        self.video = [ [0 for x in range(0, 128)] for y in range(0, 128) ]
-        # self.video  = [[0x0] * 128] * 128
-        self.keypad  = numpy.array([0] * 16, dtype=numpy.uint8)
+        self.memory  = Memory()
+        self.cpu     = CPU()
+        self.video   = Display(screen)
+
+        self.keypad  = bytearray([0] * 16)
         self.fontset = [
             0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
             0x20, 0x60, 0x20, 0x20, 0x70, # 1
@@ -77,8 +95,9 @@ class Chip8:
         self.dbg = False
 
     def load(self, filename):
+        self.reset()
         with open(filename, 'rb') as fp:
-            rom = numpy.frombuffer(fp.read(), dtype=numpy.uint8)
+            rom = bytearray(fp.read())
         
         # load rom to memory
         for offset, byte in enumerate(rom):
@@ -87,7 +106,11 @@ class Chip8:
         # load fonts
         for i in range(0, len(self.fontset)):
             self.memory.write(i, self.fontset[i])
-        # reset stack/regs
+
+    def reset(self):
+        self.cpu = CPU()
+        self.memory = Memory()
+        self.video.clear()
 
     def tick(self):
         running = True
@@ -100,20 +123,12 @@ class Chip8:
             opcode = (self.memory.read(self.cpu.pc) << 8) | self.memory.read(self.cpu.pc + 1)
             if self.dbg:
                 print(f'opcode:{hex(opcode)}')
-                self.cpu.dump_registers()
+                self.cpu.dump()
                 input()
             self.execute(opcode)
             
-
-            for row in range(0, len(self.video)):
-                for col in range(0, len(self.video[row])):
-                    scale = 5
-                    y = row * scale 
-                    x = col * scale
-                    if self.video[row][col]:
-                        pygame.draw.rect(screen, 0xffffff , (x, y, scale, scale))
+            self.video.render()
             pygame.display.flip()
-
 
     def execute(self, opcode):
 
@@ -157,15 +172,18 @@ class Chip8:
         elif operation == 0xc: self.RND(x, kk)
         elif operation == 0xd: self.DRAW(x, y, n)
         elif operation == 0xe:
-            if kk == 0x9e: self.SK_IF_PRESS(x)
+            sys.exit('__NOT__IMPLEMENTED__')
+            # if kk == 0x9e: self.SK_IF_PRESS(x)
             # if kk == 0xa1: self.SK_NOT_PRESS(x)
 
         elif operation == 0xf:
             subroutine = opcode & 0xff
             if    subroutine == 0x55: self.fx55(x)
             elif  subroutine == 0x1e: self.fx1e(x)
+            elif  subroutine == 0x15: self.fx15(x)
             elif  subroutine == 0x65: self.fx65(x)
             elif  subroutine == 0x29: self.fx29(x)
+            elif  subroutine == 0x07: self.fx07(x)
             else: raise NotImplementedError(f'Instruction: {hex(operation)}, Subroutine:{hex(subroutine)} not NotImplemented')
         else: raise NotImplementedError(f'Instruction: {hex(operation)} not NotImplemented')
 
@@ -201,6 +219,14 @@ class Chip8:
     # -- END   Logical Operatios
 
     # -- BEGIN Subroutine Operations
+    def fx15(self, x):
+        self.cpu.timer['delay'] = self.cpu.v[x]
+        print(f'LD DT, V{x}')
+
+    def fx07(self, x):
+        self.cpu.v[x] = self.cpu.timer['delay']
+        print(f'LD V{x}, DT')
+
     def fx29(self, x):
         self.cpu.i = self.cpu.v[x] * 0x5
         print(f'LD I, V{x}')
@@ -248,8 +274,8 @@ class Chip8:
                 if (pixel & 0x80) > 0:
                     screenY = locY + row
                     screenX = locX + col
-                    self.video[ screenY ][ screenX ] ^= pixel
-                    if self.video[ screenY ][ screenX ] != 0:
+                    self.video.buffer[ screenY ][ screenX ] ^= pixel
+                    if self.video.buffer[ screenY ][ screenX ] != 0:
                         self.cpu.v[0xf] = 0x1
                 pixel = pixel << 1
         print(f'DRW V{x}, V{y}, {hex(nibble)}')       
@@ -284,7 +310,7 @@ class Chip8:
     def CLS_RET(self, opcode):
         # CLS
         if opcode == 0x0000:
-            self.video  = [[0x0] * 128] * 128
+            self.video.clear()
             print('CLS')
         # RET
         if opcode == 0x000E:
@@ -295,18 +321,13 @@ class Chip8:
         self.cpu.v[x] = kk
         print(f'LD V{x}, {hex(kk)}')
 
-    def print_registers(self):
-        print(f'''
-            \rpc: {hex(self.cpu.pc)}
-            \rsp: {hex(self.cpu.sp)}
-            \ri : {hex(self.cpu.i)}
-            \rv : {[hex(v) for v in self.cpu.v]}''')
-
-screen = pygame.display.set_mode([500, 500])
 chip8 = Chip8()
 # chip8.load("./ROMS/GREET")
 # chip8.load("./ROMS/BLITZ")
-chip8.load("./ROMS/IBM")
+# chip8.load("./ROMS/IBM")
 # chip8.load("./ROMS/BC_TEST")
-# chip8.load("./ROMS/STOP_WATCH")
+# chip8.load("./ROMS/KALEID")
+chip8.load("./ROMS/PUZZLE")
 chip8.tick()
+
+
