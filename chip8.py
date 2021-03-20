@@ -1,3 +1,10 @@
+# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-statements
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-locals
+# pylint: disable=unused-import
+
 import sys
 import numpy
 import pygame
@@ -19,7 +26,7 @@ class Memory:
 
 class CPU:
 
-    # pylint: disable=too-many-instance-attributes
+    
     
     def __init__(self):
         self.v  = numpy.array([0] * 16, dtype=numpy.uint8)
@@ -39,6 +46,7 @@ class CPU:
                 \rpc:{hex(self.pc)}\n\
                 \rsp:{hex(self.sp)}\n\
                 \rstack:{self.stack}')
+
 
 class Chip8:
     def __init__(self):
@@ -106,9 +114,7 @@ class Chip8:
                         pygame.draw.rect(screen, 0xffffff , (x, y, scale, scale))
             pygame.display.flip()
 
-    # pylint: disable=too-many-statements
-    # pylint: disable=too-many-branches
-    # pylint: disable=too-many-locals
+
     def execute(self, opcode):
 
         operation = (opcode & 0xf000) >> 12
