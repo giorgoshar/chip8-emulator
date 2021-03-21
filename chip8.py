@@ -10,25 +10,19 @@ import os.path
 import numpy
 import pygame
 
+from Display import Display
+from Memory  import Memory
+
 pygame.init()
 screen = pygame.display.set_mode([500, 500])
 
-class Memory:
-    def __init__(self):
-        self.buffer = bytearray([0] * 4096)
-    def read(self, addr):
-        return self.buffer[addr]
-    def write(self, addr, value):
-        self.buffer[addr] = value
-    def dump(self):
-        pass
-
 class CPU:
     def __init__(self):
-        self.v  = bytearray([0] * 16)
-        self.i  = 0
-        self.pc = 0x200
-        self.sp = 0
+        self.v   = bytearray([0] * 16)
+        self.i   = 0
+        self.sp  = 0
+        self.pc  = 0x200
+        self.opcode = 0x0
 
         self.stack  = bytearray([0] * 16)
         self.timer = {
@@ -39,37 +33,22 @@ class CPU:
     def dump(self):
         print(
             f'============[ CPU REGISTERS ]============\n'
-            f'v: {self.v}\n'
+            f'v: {[hex(b) for b in self.v]}\n'
             f'i: {hex(self.i)}\n'
             f'pc: {hex(self.pc)}\n'
             f'sp: {hex(self.sp)}\n'
-            f'stack: {self.stack}\n'
-            f'delay_t: {self.timer["delay"]}'
+            f'stack: {[hex(b) for b in self.stack]}\n'
+            f'delay: {self.timer["delay"]}\n'
+            f'sound: {self.timer["sound"]}\n'
+            f'============[ INSTRUCTION ]============\n'
+            f'opcode   : {hex( self.opcode)}\n'
+            f'operation: {hex((self.opcode & 0xf000) >> 12)}\n'
+            f'x        : {hex((self.opcode & 0x0f00) >> 8)}\n'
+            f'y        : {hex((self.opcode & 0x00f0) >> 4)}\n'
+            f'nibble   : {hex( self.opcode & 0x000f)}\n'
+            f'kk       : {hex( self.opcode & 0x00ff)}\n'
+            f'nnn      : {hex( self.opcode & 0x0fff)}'
         )
-
-class Display:
-    def __init__(self, surface):
-
-        self.cols = 128
-        self.rows = 128 
-
-        self.scale = 5
-
-        self.buffer = [ [0 for x in range(0, 128)] for y in range(0, 128) ]
-        self.screen = surface
-    
-    def render(self):
-        for row in range(0, len(self.buffer)):
-            for col in range(0, len(self.buffer[row])):
-                if self.buffer[row][col]:
-                    pygame.draw.rect(self.screen, 0xffffff , (
-                        col * self.scale, 
-                        row * self.scale, 
-                        self.scale, 
-                        self.scale
-                    ))
-    def clear(self):
-        self.buffer = [ [0 for x in range(0, 128)] for y in range(0, 128) ]
 
 class Chip8:
     def __init__(self):
@@ -98,6 +77,12 @@ class Chip8:
         ]
 
         self.dbg = False
+        self.opcode = 0x0
+
+        # self.instructions = {
+        #     0x0000: self.op_0nnn,
+        #     0x1000: self.op_1nnn
+        # }
 
     def load(self, filename):
         self.reset()
@@ -125,18 +110,24 @@ class Chip8:
                 if event.type == pygame.QUIT:
                     running = False
 
-            opcode = (self.memory.read(self.cpu.pc) << 8) | self.memory.read(self.cpu.pc + 1)
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_e:
+                        self.keypad[0x0] = 1
+
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_e:
+                        self.keypad[0x0] = 0
+
+            self.opcode = (self.memory.read(self.cpu.pc) << 8) | self.memory.read(self.cpu.pc + 1)
             if self.dbg:
-                print(f'opcode:{hex(opcode)}')
                 self.cpu.dump()
-                input()
+
             try: 
-                self.execute(opcode)
-            except Exception as e:
+                self.execute(self.opcode)
+            except (NotImplementedError, ValueError) as e:
                 self.cpu.dump()
                 print(e)
                 sys.exit()
-            
 
             if self.cpu.timer['delay'] > 0:
                 self.cpu.timer['delay'] -= 1
@@ -165,38 +156,48 @@ class Chip8:
         elif operation == 0x5: self.SE_Vx_Vy(x, y)
         elif operation == 0x6: self.LD_VX(x, kk)
         elif operation == 0x7: self.ADD_VX(x, kk)
-        elif operation == 0x8:
-            logical_operation = opcode & 0xf
-            if   logical_operation == 0x0: self.lo_ld(x, y)
-            elif logical_operation == 0x1: self.lo_or(x, y)
-            elif logical_operation == 0x2: self.lo_and(x, y)
-            elif logical_operation == 0x3: self.lo_xor(x, y)
-            elif logical_operation == 0x5: self.lo_sub(x, y)
-            elif logical_operation == 0x7: self.lo_subn(x, y)
-            elif logical_operation == 0xe: self.lo_shl(x, y)
-            else: raise NotImplementedError(f'Instruction: {hex(operation)}, logical_operation:{hex(logical_operation)} not NotImplemented')
 
         elif operation == 0xa: self.LD_I(nnn)
         elif operation == 0xc: self.RND(x, kk)
         elif operation == 0xd: self.DRAW(x, y, n)
-        elif operation == 0xe:
-            sys.exit('__NOT__IMPLEMENTED__')
-            # if kk == 0x9e: self.SK_IF_PRESS(x)
-            # if kk == 0xa1: self.SK_NOT_PRESS(x)
 
-        elif operation == 0xf:
-            subroutine = opcode & 0xff
-            if    subroutine == 0x07: self.fx07(x)
-            if    subroutine == 0x0a: self.fx0a(x)
-            elif  subroutine == 0x55: self.fx55(x)
-            elif  subroutine == 0x1e: self.fx1e(x)
-            elif  subroutine == 0x15: self.fx15(x)
-            elif  subroutine == 0x65: self.fx65(x)
-            elif  subroutine == 0x29: self.fx29(x)
-            elif  subroutine == 0x33: self.fx33(x)
-            else: raise NotImplementedError(f'Instruction: {hex(operation)}, Subroutine:{hex(subroutine)} not NotImplemented')
-        else: raise NotImplementedError(f'Instruction: {hex(operation)} not NotImplemented')
+        # ==[ inputs ]==
+        elif operation == 0xe and (opcode & 0xff) == 0x9e: self.skp_pressed(x)
+        elif operation == 0xe and (opcode & 0xff) == 0xa1: self.skp_not_pressed(x)
 
+        # ==[ logical instructions ]==
+        elif operation == 0x8 and (opcode & 0xf) == 0x0: self.lo_ld(x, y)
+        elif operation == 0x8 and (opcode & 0xf) == 0x1: self.lo_or(x, y)
+        elif operation == 0x8 and (opcode & 0xf) == 0x2: self.lo_and(x, y)
+        elif operation == 0x8 and (opcode & 0xf) == 0x3: self.lo_xor(x, y)
+        elif operation == 0x8 and (opcode & 0xf) == 0x5: self.lo_sub(x, y)
+        elif operation == 0x8 and (opcode & 0xf) == 0x7: self.lo_subn(x, y)
+        elif operation == 0x8 and (opcode & 0xf) == 0xe: self.lo_shl(x, y)
+
+        # ==[ subroutine instructions ]==
+        elif operation == 0xf and (opcode & 0xff) == 0x7 : self.fx07(x)
+        elif operation == 0xf and (opcode & 0xff) == 0x0a: self.fx0a(x)
+        elif operation == 0xf and (opcode & 0xff) == 0x55: self.fx55(x)
+        elif operation == 0xf and (opcode & 0xff) == 0x1e: self.fx1e(x)
+        elif operation == 0xf and (opcode & 0xff) == 0x15: self.fx15(x)
+        elif operation == 0xf and (opcode & 0xff) == 0x18: self.fx18(x)
+        elif operation == 0xf and (opcode & 0xff) == 0x65: self.fx65(x)
+        elif operation == 0xf and (opcode & 0xff) == 0x29: self.fx29(x)
+        elif operation == 0xf and (opcode & 0xff) == 0x33: self.fx33(x)
+        else: raise NotImplementedError(f'(???) Failed to execute opcode: {hex(opcode)}')
+
+
+
+    # -- BEGIN INPUT HANDLE --
+    def skp_pressed(self, x):
+        if self.keypad[0x0] == 1:
+            self.cpu.pc += 2
+        print(f'SKP V{x}')
+
+    def skp_not_pressed(self, x):
+        if self.keypad[0x0] == 0:
+            self.cpu.pc += 2
+        print(f'SKNP V{x}')
 
     # -- BEGIN Logical Operatios
     def lo_shl(self, x, y):
@@ -240,6 +241,10 @@ class Chip8:
     def fx15(self, x):
         self.cpu.timer['delay'] = self.cpu.v[x]
         print(f'LD DT, V{x}')
+
+    def fx18(self, x):
+        self.cpu.timer['sound'] = self.cpu.v[x]
+        print(f'LD ST, V{x}')
 
     def fx0a(self, x):
         sys.exit('[__ERROR__] fx0a')
@@ -300,7 +305,7 @@ class Chip8:
                     if self.video.buffer[ screenY ][ screenX ] != 0:
                         self.cpu.v[0xf] = 0x1
                 pixel = pixel << 1
-        print(f'DRW V{x}, V{y}, {hex(nibble)}')       
+        print(f'DRW V{hex(x)}, V{hex(x)}, {hex(nibble)}')       
 
     def SE(self, x, kk):
         if self.cpu.v[x] == kk:

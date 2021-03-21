@@ -55,7 +55,8 @@ LOOP:
     SE  V1, 32      ; Have we drawn all the lines ? If yes, V1==32.
     JP  LOOP        ; No ? So we continue !
 
-FIN:    JP FIN      ; Infinite loop...
+FIN:
+    JP FIN      ; Infinite loop...
 
 RIGHT:              ; 4*4 bitmap of the left line
 
