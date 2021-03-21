@@ -6,6 +6,7 @@
 # pylint: disable=unused-import
 
 import sys
+import os.path
 import numpy
 import pygame
 
@@ -36,11 +37,15 @@ class CPU:
         }
 
     def dump(self):
-        print(f'v:{self.v}\n\
-                \ri:{hex(self.i)}\n\
-                \rpc:{hex(self.pc)}\n\
-                \rsp:{hex(self.sp)}\n\
-                \rstack:{self.stack}')
+        print(
+            f'============[ CPU REGISTERS ]============\n'
+            f'v: {self.v}\n'
+            f'i: {hex(self.i)}\n'
+            f'pc: {hex(self.pc)}\n'
+            f'sp: {hex(self.sp)}\n'
+            f'stack: {self.stack}\n'
+            f'delay_t: {self.timer["delay"]}'
+        )
 
 class Display:
     def __init__(self, surface):
@@ -125,7 +130,18 @@ class Chip8:
                 print(f'opcode:{hex(opcode)}')
                 self.cpu.dump()
                 input()
-            self.execute(opcode)
+            try: 
+                self.execute(opcode)
+            except Exception as e:
+                self.cpu.dump()
+                print(e)
+                sys.exit()
+            
+
+            if self.cpu.timer['delay'] > 0:
+                self.cpu.timer['delay'] -= 1
+            if self.cpu.timer['sound'] > 0:
+                self.cpu.timer['sound'] -= 1
             
             self.video.render()
             pygame.display.flip()
@@ -139,15 +155,7 @@ class Chip8:
         kk   =  opcode & 0x00ff
         nnn  =  opcode & 0x0fff
 
-        # print(f'''
-        #   \ropcode   : {hex(opcode)}\n \
-        #   \roperation: {hex(operation)}\n \
-        #   \rx        : {hex(x)}\n \
-        #   \ry        : {hex(y)}\n \
-        #   \rkk       : {hex(kk)}\n \
-        #   \rnnn      : {hex(nnn)}
-        # ''')
-        self.cpu.pc += 2 
+        self.cpu.pc += 2
 
         if   operation == 0x0: self.CLS_RET(opcode)
         elif operation == 0x1: self.JP(nnn)
@@ -178,18 +186,21 @@ class Chip8:
 
         elif operation == 0xf:
             subroutine = opcode & 0xff
-            if    subroutine == 0x55: self.fx55(x)
+            if    subroutine == 0x07: self.fx07(x)
+            if    subroutine == 0x0a: self.fx0a(x)
+            elif  subroutine == 0x55: self.fx55(x)
             elif  subroutine == 0x1e: self.fx1e(x)
             elif  subroutine == 0x15: self.fx15(x)
             elif  subroutine == 0x65: self.fx65(x)
             elif  subroutine == 0x29: self.fx29(x)
-            elif  subroutine == 0x07: self.fx07(x)
+            elif  subroutine == 0x33: self.fx33(x)
             else: raise NotImplementedError(f'Instruction: {hex(operation)}, Subroutine:{hex(subroutine)} not NotImplemented')
         else: raise NotImplementedError(f'Instruction: {hex(operation)} not NotImplemented')
 
+
     # -- BEGIN Logical Operatios
     def lo_shl(self, x, y):
-        self.cpu.v[0xf] = x >> 7
+        self.cpu.v[0xf] = (self.cpu.v[x] & 0x80) >> 7
         self.cpu.v[x] <<= 1
         print(f'SHL V{x} [, V{y}]')
     def lo_xor(self, x, y):
@@ -219,9 +230,20 @@ class Chip8:
     # -- END   Logical Operatios
 
     # -- BEGIN Subroutine Operations
+    def fx33(self, x):
+        # sys.exit('[__ERROR__] Instruction function fx33')
+        self.memory.write(self.cpu.i    , self.cpu.v[x] / 100)
+        self.memory.write(self.cpu.i + 1, self.cpu.v[x] % 10 / 10)
+        self.memory.write(self.cpu.i + 2, self.cpu.v[x] % 10)
+        print(f'LD B, V{x}')
+
     def fx15(self, x):
         self.cpu.timer['delay'] = self.cpu.v[x]
         print(f'LD DT, V{x}')
+
+    def fx0a(self, x):
+        sys.exit('[__ERROR__] fx0a')
+        print(f'LD V{x}, K')
 
     def fx07(self, x):
         self.cpu.v[x] = self.cpu.timer['delay']
@@ -322,12 +344,22 @@ class Chip8:
         print(f'LD V{x}, {hex(kk)}')
 
 chip8 = Chip8()
-# chip8.load("./ROMS/GREET")
-# chip8.load("./ROMS/BLITZ")
-# chip8.load("./ROMS/IBM")
-# chip8.load("./ROMS/BC_TEST")
-# chip8.load("./ROMS/KALEID")
-chip8.load("./ROMS/PUZZLE")
-chip8.tick()
+# filename = "./ROMS/KALEID"
+# filename = "./ROMS/PUZZLE"
+# filename = "./ROMS/test_opcode.ch8"
+# filename = "./ROMS/IBM"
+# filename = "./ROMS/BC_TEST"
+# filename = "./ROMS/MISSILE"
+filename = "./ROMS/GREET"
 
+
+if len(sys.argv) == 2:
+    if os.path.isfile(sys.argv[1]):
+        filename = sys.argv[1]
+    else:
+        sys.exit(f'[__ERROR__] file {sys.argv[1]} doesnt exist')
+
+
+chip8.load(filename)
+chip8.tick()
 
