@@ -1,6 +1,7 @@
 import sys
 import os
 import os.path
+import struct
 
 os.system("clear")
 
@@ -21,6 +22,7 @@ print(f'| {"addr":<6} | {"opcode"} | instruction ')
 print('----------------------------------------')
 idx = 0
 
+
 for idx in range(0, len(rom), 2):
     
     if idx + 1 >= len(rom):
@@ -32,18 +34,18 @@ for idx in range(0, len(rom), 2):
     y         = (opcode & 0x00f0) >> 4
     nibble    =  opcode & 0x000f
     kk        =  opcode & 0x00ff
-    nnn       =  opcode & 0x0fff
+    nnn:x       =  opcode & 0x0fff
 
-    print(f'| 0x{idx:04x} | 0x{opcode:04x} | ', end='')
+    print(f'| {idx:04} | 0x{opcode:04x} | ', end='')
     if operation == 0x0 and opcode == 0x0000: print('CLS')
     if operation == 0x0 and opcode == 0x00ee: print('RET')
 
-    elif operation == 0x1: print(f'JP   0x{nnn:x}')
-    elif operation == 0x2: print(f'CALL 0x{nnn:x}')
-    elif operation == 0x3: print(f'SE   V{x}, 0x{kk:x}')
-    elif operation == 0x4: print(f'SNE  V{x}, 0x{kk:x}')
+    elif operation == 0x1: print(f'JP   {nnn:x}')
+    elif operation == 0x2: print(f'CALL {nnn:x}')
+    elif operation == 0x3: print(f'SE   V{x}, {kk:x}')
+    elif operation == 0x4: print(f'SNE  V{x}, {kk:x}')
     elif operation == 0x5: print(f'SE   V{x}, V{y}')
-    elif operation == 0x6: print(f'LD   V{x}, 0x{kk:x}')
+    elif operation == 0x6: print(f'LD   V{x}, {kk:x}')
     elif operation == 0x7: print(f'ADD  V{x}, {kk:x}')
     
     elif operation == 0x8 and (opcode & 0xf) == 0x0: print(f'LD   V{x}, V{y}')
@@ -57,10 +59,10 @@ for idx in range(0, len(rom), 2):
     elif operation == 0x8 and (opcode & 0xf) == 0xe: print(f'SHL  V{x}  [, V{y}]')
 
     elif operation == 0x9: print(f'SNE  V{x}, V{y}')
-    elif operation == 0xa: print(f'LD   I, 0x{nnn:x}')
+    elif operation == 0xa: print(f'LD   I, {nnn:x}')
     elif operation == 0xe: print(f'SHL  V{x} [, V{y}]')
     elif operation == 0xc: print(f'RND  V{x} {kk:x}')
-    elif operation == 0xd: print(f'DRW  V{x}, V{y}, {nibble:x}')
+    elif operation == 0xd: print(f'DRW  V{x}, V{y}, {nibble}')
     
     elif operation == 0xf and (opcode & 0xff) == 0x07: print(f'LD   V{x},  DT')
     elif operation == 0xf and (opcode & 0xff) == 0x0a: print(f'LD   V{x},  K')
@@ -71,5 +73,6 @@ for idx in range(0, len(rom), 2):
     elif operation == 0xf and (opcode & 0xff) == 0x33: print(f'LD   B,   V{x}')
     elif operation == 0xf and (opcode & 0xff) == 0x55: print(f'LD   [I], V{x}')
     elif operation == 0xf and (opcode & 0xff) == 0x65: print(f'LD   V{x},  [I]')
-    else: sys.exit(f'fail operation: 0x{operation:x}')
+    else: sys.exit(f'fail operation: {operation}')
+
 

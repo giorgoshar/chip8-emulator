@@ -12,46 +12,16 @@ import pygame
 
 from Display import Display
 from Memory  import Memory
+from CPU     import CPU
 
 pygame.init()
 screen = pygame.display.set_mode([500, 500])
 
-class CPU:
-    def __init__(self):
-        self.v   = bytearray([0] * 16)
-        self.i   = 0
-        self.sp  = 0
-        self.pc  = 0x200
-        self.opcode = 0x0
 
-        self.stack  = bytearray([0] * 16)
-        self.timer = {
-            'delay' : 0,
-            'sound' : 0
-        }
-
-    def dump(self):
-        print(
-            f'============[ CPU REGISTERS ]============\n'
-            f'v: {[hex(b) for b in self.v]}\n'
-            f'i: {hex(self.i)}\n'
-            f'pc: {hex(self.pc)}\n'
-            f'sp: {hex(self.sp)}\n'
-            f'stack: {[hex(b) for b in self.stack]}\n'
-            f'delay: {self.timer["delay"]}\n'
-            f'sound: {self.timer["sound"]}\n'
-            f'============[ INSTRUCTION ]============\n'
-            f'opcode   : {hex( self.opcode)}\n'
-            f'operation: {hex((self.opcode & 0xf000) >> 12)}\n'
-            f'x        : {hex((self.opcode & 0x0f00) >> 8)}\n'
-            f'y        : {hex((self.opcode & 0x00f0) >> 4)}\n'
-            f'nibble   : {hex( self.opcode & 0x000f)}\n'
-            f'kk       : {hex( self.opcode & 0x00ff)}\n'
-            f'nnn      : {hex( self.opcode & 0x0fff)}'
-        )
 
 class Chip8:
     def __init__(self):
+
         self.memory  = Memory()
         self.cpu     = CPU()
         self.video   = Display(screen)
@@ -75,14 +45,6 @@ class Chip8:
             0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
             0xF0, 0x80, 0xF0, 0x80, 0x80  # F
         ]
-
-        self.dbg = False
-        self.opcode = 0x0
-
-        # self.instructions = {
-        #     0x0000: self.op_0nnn,
-        #     0x1000: self.op_1nnn
-        # }
 
     def load(self, filename):
         self.reset()
@@ -118,16 +80,13 @@ class Chip8:
                     if event.key == pygame.K_e:
                         self.keypad[0x0] = 0
 
-            self.opcode = (self.memory.read(self.cpu.pc) << 8) | self.memory.read(self.cpu.pc + 1)
-            if self.dbg:
-                self.cpu.dump()
-
+            self.cpu.opcode = (self.memory.read(self.cpu.pc) << 8) | self.memory.read(self.cpu.pc + 1)
             try: 
-                self.execute(self.opcode)
+                self.execute(self.cpu.opcode)
             except (NotImplementedError, ValueError) as e:
                 self.cpu.dump()
                 print(e)
-                sys.exit()
+                sys.exit('-- error --')
 
             if self.cpu.timer['delay'] > 0:
                 self.cpu.timer['delay'] -= 1
@@ -185,8 +144,6 @@ class Chip8:
         elif operation == 0xf and (opcode & 0xff) == 0x29: self.fx29(x)
         elif operation == 0xf and (opcode & 0xff) == 0x33: self.fx33(x)
         else: raise NotImplementedError(f'(???) Failed to execute opcode: {hex(opcode)}')
-
-
 
     # -- BEGIN INPUT HANDLE --
     def skp_pressed(self, x):
@@ -288,7 +245,8 @@ class Chip8:
         print(f'JP {hex(nnn)}')
 
     def ADD_VX(self, x, kk):
-        self.cpu.v[x] += kk
+        self.cpu.v[x] += kk 
+        # assert self.cpu.v[x] > 0xff
         print(f'ADD V{x}, {hex(kk)}')
 
     def DRAW(self, x, y, nibble):
@@ -305,7 +263,7 @@ class Chip8:
                     if self.video.buffer[ screenY ][ screenX ] != 0:
                         self.cpu.v[0xf] = 0x1
                 pixel = pixel << 1
-        print(f'DRW V{hex(x)}, V{hex(x)}, {hex(nibble)}')       
+        print(f'DRW V{hex(x)}, V{hex(y)}, {hex(nibble)}')       
 
     def SE(self, x, kk):
         if self.cpu.v[x] == kk:
@@ -355,7 +313,7 @@ chip8 = Chip8()
 # filename = "./ROMS/IBM"
 # filename = "./ROMS/BC_TEST"
 # filename = "./ROMS/MISSILE"
-filename = "./ROMS/GREET"
+filename = "./ROMS/IBM"
 
 
 if len(sys.argv) == 2:
