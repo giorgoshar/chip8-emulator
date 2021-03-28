@@ -145,15 +145,21 @@ class Chip8:
 
     # -- BEGIN INPUT HANDLE --
     def skp_pressed(self, x):
+        print(f'SKP V{x}')
         if self.keypad[x] == 1:
             self.cpu.pc += 2
-        print(f'SKP V{x}')
-
     def skp_not_pressed(self, x):
         print(f'SKNP V{x}')
         if self.keypad[x] == 0:
             self.cpu.pc += 2
+
     # -- BEGIN Logical Operatios
+    def lo_ld(self, x, y):
+        print(f'LD V{x}, V{y}')
+        self.cpu.v[x] = self.cpu.v[y]
+    def lo_or(self, x, y):
+        print(f'OR V{x}, V{y}')
+        self.cpu.v[x] |= self.cpu.v[y]
     def lo_shr(self, x, y):
         print(f'SHR V{x} [, V{y}]')
         self.cpu.v[0xF] = self.cpu.v[x] & 0x1
@@ -169,18 +175,12 @@ class Chip8:
         else:
             self.cpu.v[0xf] = 0
         self.cpu.v[x] = (self.cpu.v[x] + self.cpu.v[y]) & 0xff
-    def lo_or(self, x, y):
-        print(f'OR V{x}, V{y}')
-        self.cpu.v[x] |= self.cpu.v[y]
     def lo_xor(self, x, y):
         print(f'XOR V{x}, V{y}')
         self.cpu.v[x] ^= self.cpu.v[y]
     def lo_and(self, x, y):
         print(f'AND V{x}, V{y}')
         self.cpu.v[x] &= self.cpu.v[y]
-    def lo_ld(self, x, y):
-        print(f'LD V{x}, V{y}')
-        self.cpu.v[x] = self.cpu.v[y]
     def lo_sub(self, x, y):
         print(f'SUB V{x}, V{y}')
         if self.cpu.v[x] >= self.cpu.v[y]:
@@ -195,7 +195,6 @@ class Chip8:
         else:
             self.cpu.v[0xf] = 0
         self.cpu.v[x] = (self.cpu.v[y] - self.cpu.v[x]) & 0xff
-    # -- END   Logical Operatios
 
     # -- BEGIN Subroutine Operations
     def fx33(self, x): # BCD
@@ -215,30 +214,76 @@ class Chip8:
         while not key_pressed:
             pygame.event.get()
             key = pygame.key.get_pressed()
-            if key[pygame.K_0]: self.cpu.v[x] = 0x0; break
-            if key[pygame.K_1]: self.cpu.v[x] = 0x1; break
-            if key[pygame.K_2]: self.cpu.v[x] = 0x2; break
-            if key[pygame.K_3]: self.cpu.v[x] = 0x3; break
-            if key[pygame.K_4]: self.cpu.v[x] = 0x4; break
-            if key[pygame.K_5]: self.cpu.v[x] = 0x5; break
-            if key[pygame.K_6]: self.cpu.v[x] = 0x6; break
-            if key[pygame.K_7]: self.cpu.v[x] = 0x7; break
-            if key[pygame.K_8]: self.cpu.v[x] = 0x8; break
-            if key[pygame.K_9]: self.cpu.v[x] = 0x9; break
-            if key[pygame.K_a]: self.cpu.v[x] = 0xa; break
-            if key[pygame.K_b]: self.cpu.v[x] = 0xb; break
-            if key[pygame.K_c]: self.cpu.v[x] = 0xc; break
-            if key[pygame.K_d]: self.cpu.v[x] = 0xd; break
-            if key[pygame.K_e]: self.cpu.v[x] = 0xe; break
-            if key[pygame.K_f]: self.cpu.v[x] = 0xf; break
-
+            if key[pygame.K_0]:
+                self.cpu.v[x] = 0x0
+                self.keypad[0x0] = 1
+                break
+            if key[pygame.K_1]:
+                self.cpu.v[x] = 0x1
+                self.keypad[0x1] = 1
+                break
+            if key[pygame.K_2]:
+                self.cpu.v[x] = 0x2
+                self.keypad[0x2] = 1
+                break
+            if key[pygame.K_3]:
+                self.cpu.v[x] = 0x3
+                self.keypad[0x3] = 1
+                break
+            if key[pygame.K_4]:
+                self.cpu.v[x] = 0x4
+                self.keypad[0x4] = 1
+                break
+            if key[pygame.K_5]:
+                self.cpu.v[x] = 0x5
+                self.keypad[0x5] = 1
+                break
+            if key[pygame.K_6]:
+                self.cpu.v[x] = 0x6
+                self.keypad[0x6] = 1
+                break
+            if key[pygame.K_7]:
+                self.cpu.v[x] = 0x7
+                self.keypad[0x7] = 1
+                break
+            if key[pygame.K_8]:
+                self.cpu.v[x] = 0x8
+                self.keypad[0x8] = 1
+                break
+            if key[pygame.K_9]:
+                self.cpu.v[x] = 0x9
+                self.keypad[0x9] = 1
+                break
+            if key[pygame.K_a]:
+                self.cpu.v[x] = 0xa
+                self.keypad[0xa] = 1
+                break
+            if key[pygame.K_b]:
+                self.cpu.v[x] = 0xb
+                self.keypad[0xb] = 1
+                break
+            if key[pygame.K_c]:
+                self.cpu.v[x] = 0xc
+                self.keypad[0xc] = 1
+                break
+            if key[pygame.K_d]:
+                self.cpu.v[x] = 0xd
+                self.keypad[0xd] = 1
+                break
+            if key[pygame.K_e]:
+                self.cpu.v[x] = 0xe
+                self.keypad[0xe] = 1
+                break
+            if key[pygame.K_f]:
+                self.cpu.v[x] = 0xf
+                self.keypad[0xf] = 1
+                break
     def fx07(self, x):
         print(f'LD V{x}, DT')
         self.cpu.v[x] = self.cpu.timer['delay']
     def fx29(self, x):
         print(f'LD I, V{x}')
         self.cpu.i = (self.cpu.v[x] * 0x5) & 0xff
-
     def fx1e(self, x):
         print(f'ADD {hex(self.cpu.i)}, V{x}')
         self.cpu.i += self.cpu.v[x]
@@ -251,11 +296,6 @@ class Chip8:
             print(f'LD V{x}, [{hex(self.cpu.i + counter)}]')
             self.cpu.v[counter] = self.memory.read(self.cpu.i + counter)
     # -- END  Subroutine Operations
-
-    def SK_IF_PRESS(self, x):
-        isPressed = self.keypad[ self.cpu.v[x] ]
-        if isPressed == 0:
-            self.cpu.pc += 2 
 
     def RND(self, x, kk):
         print(f'RND V{x} {hex(kk)}')
@@ -279,15 +319,15 @@ class Chip8:
         locY = self.cpu.v[y]
         self.cpu.v[0xf] = 0x0
         for row in range(0, nibble):
-            pixel = self.memory.read(self.cpu.i  + row)
+            sprite = self.memory.read(self.cpu.i  + row)
             for col in range(0, 8):
-                if (pixel & 0x80) > 0:
-                    screenY = (locY + row) % 32# & (0x80 - 1)
-                    screenX = (locX + col) % 64# & (0x80 - 1)
-                    self.video.buffer[ screenY ][ screenX ] ^= pixel
+                if (sprite & 0x80) > 0:
+                    screenY = (locY + row) % self.video.rows
+                    screenX = (locX + col) % self.video.cols
+                    self.video.buffer[ screenY ][ screenX ] ^= sprite
                     if self.video.buffer[ screenY ][ screenX ] != 0:
                         self.cpu.v[0xf] = 0x1
-                pixel = pixel << 1
+                sprite = sprite << 1
 
     def SE_Vx_kk(self, x, kk):
         print(f'SE V{x}, {hex(kk)}')
