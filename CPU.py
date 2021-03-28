@@ -5,7 +5,7 @@ class CPU:
         self.sp     = 0
         self.pc     = 0x200
 
-        self.stack  = bytearray([0] * 16)
+        self.stack  = [0] * 16
         self.timer = {
             'delay' : 0,
             'sound' : 0
@@ -15,11 +15,11 @@ class CPU:
     def dump(self):
         print(
             f'============[ CPU REGISTERS ]============\n'
-            f'v: {[hex(b) for b in self.v]}\n'
+            f'v: {[{idx: hex(b)} for idx, b in enumerate(self.v)]}\n'
             f'i: {hex(self.i)}\n'
             f'pc: {hex(self.pc)}\n'
             f'sp: {hex(self.sp)}\n'
-            f'stack: {[hex(b) for b in self.stack]}\n'
+            f'stack: {[ {idx: hex(b)} for idx, b in enumerate(self.stack)]}\n'
             f'delay: {self.timer["delay"]}\n'
             f'sound: {self.timer["sound"]}\n'
             f'============[ INSTRUCTION ]============\n'
@@ -37,4 +37,3 @@ class CPU:
     def tick(self, cycle):
         pass
 
-    

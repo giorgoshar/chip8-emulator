@@ -3,12 +3,12 @@ import pygame
 class Display:
     def __init__(self, surface):
 
-        self.cols = 128
-        self.rows = 128 
+        self.cols = 64
+        self.rows = 32 
 
         self.scale = 5
 
-        self.buffer = [ [0 for x in range(0, 128)] for y in range(0, 128) ]
+        self.buffer = [ [0 for x in range(0, self.cols)] for y in range(0, self.rows) ]
         self.screen = surface
     
     def render(self):
@@ -22,4 +22,4 @@ class Display:
                         self.scale
                     ))
     def clear(self):
-        self.buffer = [ [0 for x in range(0, 128)] for y in range(0, 128) ]
+        self.buffer = [ [0 for x in range(0, self.cols)] for y in range(0, self.rows) ]
