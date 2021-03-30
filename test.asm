@@ -1,0 +1,3 @@
+ADD V1, 5
+LD  V2, 3
+LD  V2, V3

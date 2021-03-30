@@ -24,112 +24,76 @@ REGEX_NIBBLE   = r'0[xX]([0-9a-fA-F])'
 REGEX_REG      = r'V([0-9a-fA-F])'
 REGEX_JMP_CALL = r'(JMP|CALL)'
 
-class Token:
-    def __init__(self, value, kind, callback, args):
-        self.value = value
+class Tokenizer:
+    def __init__(self, kind, value):
         self.kind  = kind
-        self.cb    = callback
-        self.args  = args
+        self.value = value
 
 class Parser:
     def __init__(self):
-        self.binary = bytearray()
-        self.tokens = {}
-        self.error = 0
-        self.addr  = 0x0
-        self.pc    = 0x200
-        self.index = 0
-        
-        self.types = [
-            0x1, # LABEL
-            0x2, # INSTRUCTION
-        ]
-
-        self.symbols = []
-        self.labels  = []
-        self.ins     = []
+        self.lineIndex = 0
+        self.tokens = []
     
     def parse(self, text):
         
         token = text.split()
+        
+        if token[0].strip() == 'ADD' and len(token) == 3:
+            args = []
+            if re.match(REGEX_REG, token[1]):
+                arg1 = Tokenizer('REG', self.extract_reg(token[1]))
+                args.append(arg1)
 
-        # if self.is_label(token):
-        #     pass
-        opcode = None
+            if self.is_number(int(token[2])):
+                arg2 = Tokenizer('NUMBER', int(token[2]))
+                args.append(arg2)
 
-        if (token[0] == 'ADD'
-        and re.match(REGEX_REG, token[1])
-        and self.is_number(int(token[2]))):
-            arg1 = int(token[1][1:])
-            arg2 = int(token[2])
+            ins = Tokenizer('ADD', args)
+            self.tokens.append(ins)
 
-            opcode = 0x7000 | (arg1) << 8 | arg2
-            self.ins.append(opcode)
 
-        if (token[0].strip() == 'LD'
-        and re.match(REGEX_REG, token[1])
-        and self.is_number(int(token[2]))):
-            arg1 = int(token[1][1:])
-            arg2 = int(token[2])
-            
-            opcode = 0x6000 | (arg1) << 8 | arg2
-            self.ins.append(opcode)
+        if token[0].strip() == 'LD' and len(token) == 3:
+            args = []
+            if re.match(REGEX_REG, token[1]):
+                arg1 = Tokenizer('REG', self.extract_reg(token[1]))
+                args.append(arg1)
 
-        if (token[0].strip() == 'LD'
-        and token[1].strip() == 'I'
-        and self.is_number(int(token[2]))):
-            arg2 = int(token[2][1:])
+            if token[1].strip() == 'I':
+                arg1 = Tokenizer('INDEX', token[1])
+                args.append(arg1)
 
-            opcode = 0xa000 | (arg2 & 0x0fff)
-            self.ins.append(opcode)
 
-        # if (token[0].strip() == 'LD'
-        # and re.match(REGEX_REG, token[1])
-        # and re.match(REGEX_REG, token[2])):
-            
-        #     arg1 = int(token[1][1:])
-        #     arg2 = int(token[2][1:])
-            
-        #     opcode = 0xa000 | (arg2 & 0x0fff)
-        #     self.ins.append(opcode)
+            if self.is_number(token[2]):
+                arg2 = Tokenizer('NUMBER', int(token[2]))
+                args.append(arg2)
 
-        # self.index += 1
+            if re.match(REGEX_REG, token[2]):
+                arg2 = Tokenizer('REG', self.extract_reg(token[1]))
+                args.append(arg2)
 
-        if opcode: print(f'0x{opcode:<6x} -> {text}')
 
-    def ins_jump(self, nnn):
-        # 1nnn
-        return 0x1000 | (nnn & 0x0fff)
+            ins = Tokenizer('LD', args)
+            self.tokens.append(ins)
 
-    def is_instruction(self, tok):
-        pass
 
-    def is_label(self, token):
-        sys.exit('_not_implemented_')
-        if re.match(REGEX_JMP_CALL, token):
-            return True
-        return False
-
-    def is_option(self, tok):
-        pass
+    def extract_reg(self, REG):
+        reg = REG.replace('V', '')
+        if not reg.isdigit():
+            self.throw_syntax_error(f'Execpted `Vx` found `{REG}`') 
+        return int(reg)
 
     def is_number(self, n):
-        return isinstance(n, int)
+        return isinstance(n, int) or n.isdigit()
 
-    def parse_args(self, arg):
-        pass
+    def throw_syntax_error(self,  message):
+        sys.exit(f'{message} at line: {self.lineIndex}')
 
 parser = Parser()
-# s = parser.ins_jump(0x30)
-# print(hex(s))
-# sys.exit()
 # with open('./SOURCES/MAZE.SRC', 'r') as fp:
 # with open('./SOURCES/UFO.SRC', 'r') as fp:
 with open('./test.asm', 'r') as fp:
-    print(f'{"cp":4} | {"line":32} | {"parsed":32} | {"opcode":<8} | bin')
-    print('-' * 100)
     for idx, line in enumerate(fp):
-
+        parser.lineIndex = idx + 1
         # remove end of line
         line = line.rstrip()
 
@@ -154,49 +118,9 @@ with open('./test.asm', 'r') as fp:
 
         parser.parse(line)
 
+    for idx, token in enumerate(parser.tokens):
+        print(token.kind, token.value)
+        if isinstance(token.value, list):
+            for child_token in token.value:
+                print('   ', child_token.kind, child_token.value)
 
-        # ins = line.split()
-        # # ins = [s.upper() for s in line]
-        # opcode     = 0x0000
-        # str_opcode = ''
-        
-        # if ins[0].upper() == 'OPTION': continue
-        # if ins[0].upper() == 'ALIGN' : continue
-
-        
-        # if ins[0] == 'LD' and ins[1][0] == 'V' and ins[2][0] != 'V':
-
-        #     if ins[2][0] == '#':
-        #         ins[2] = ins[2].replace('#', '')
-
-        #     instruction = 0x6000
-        #     arg1 = int(ins[1][1:], 16)
-        #     arg2 = int(ins[2], 16)
-        #     opcode = instruction | (arg1 << 8) | (arg2 << 4)
-        #     str_opcode = f'0x{instruction:x} 0x{arg1} 0x{arg2}'
-
-        # if ins[0] == 'RND' and ins[1][0] == 'V' and ins[2][0] != 'V':
-        #     instruction = 0xc000
-        #     arg1 = int(ins[1][1:], 16)
-        #     arg2 = int(ins[2], 16)
-        #     opcode = instruction | (arg1 << 8) | (arg2 & 0x00ff)
-        #     str_opcode = f'0x{instruction:x} 0x{arg1} 0x{arg2}'
-
-        # if ins[0] == 'SE' and ins[1][0] == 'V' and ins[2][0] != 'V':
-        #     instruction = 0x3000
-        #     arg1 = int(ins[1][1:], 16)
-        #     arg2 = int(ins[2], 16)
-        #     opcode = instruction | (arg1 << 8) | (arg2 & 0x00ff)
-        #     str_opcode = f'0x{instruction:x} 0x{arg1:<x} 0x{arg2:<x}'
-
-        # if ins[0] == 'ADD' and ins[1][0] == 'V' and ins[2][0] != 'V':
-        #     instruction = 0x7000
-        #     arg1 = int(ins[1][1:], 16)
-        #     arg2 = int(ins[2], 16)
-        #     opcode = instruction | (arg1 << 8) | (arg2 & 0x00ff)
-        #     str_opcode = f'0x{instruction:x} 0x{arg1:<x} 0x{arg2:<x}'
-
-        # print(f'{addr_counter:04x} | {line:32} | {str(ins):32} | 0x{opcode:<6x} | {str_opcode}')
-
-
-# print(list(map(hex, parser.ins)))
