@@ -31,49 +31,35 @@ class Tokenizer:
 
 class Parser:
     def __init__(self):
-        self.lineIndex = 0
-        self.tokens = []
+        self.lineIndex  = 0
+        self.tokenIndex = 0
+        self.tokens     = []
     
     def parse(self, text):
         
         token = text.split()
-        
-        if token[0].strip() == 'ADD' and len(token) == 3:
-            args = []
-            if re.match(REGEX_REG, token[1]):
-                arg1 = Tokenizer('REG', self.extract_reg(token[1]))
-                args.append(arg1)
 
-            if self.is_number(int(token[2])):
-                arg2 = Tokenizer('NUMBER', int(token[2]))
-                args.append(arg2)
+        for tok in token:
+            if tok.strip() == 'ADD':
+                ins = Tokenizer('INSTRUCTION', 'ADD')
+                self.tokens.append(ins)
 
-            ins = Tokenizer('ADD', args)
-            self.tokens.append(ins)
+            if tok.strip() == 'LD':
+                ins = Tokenizer('INSTRUCTION', 'LD')
+                self.tokens.append(ins)
 
+            if re.match(REGEX_REG, tok):
+                reg = Tokenizer('REG', self.extract_reg(tok))
+                self.tokens.append(reg)
 
-        if token[0].strip() == 'LD' and len(token) == 3:
-            args = []
-            if re.match(REGEX_REG, token[1]):
-                arg1 = Tokenizer('REG', self.extract_reg(token[1]))
-                args.append(arg1)
+            if self.is_number(tok):
+                num = Tokenizer('NUMBER', int(tok))
+                self.tokens.append(num)
 
-            if token[1].strip() == 'I':
-                arg1 = Tokenizer('INDEX', token[1])
-                args.append(arg1)
+            if tok.strip() == 'I':
+                index = Tokenizer('INDEX', tok)
+                self.tokens.append(index)
 
-
-            if self.is_number(token[2]):
-                arg2 = Tokenizer('NUMBER', int(token[2]))
-                args.append(arg2)
-
-            if re.match(REGEX_REG, token[2]):
-                arg2 = Tokenizer('REG', self.extract_reg(token[1]))
-                args.append(arg2)
-
-
-            ins = Tokenizer('LD', args)
-            self.tokens.append(ins)
 
 
     def extract_reg(self, REG):
@@ -83,7 +69,7 @@ class Parser:
         return int(reg)
 
     def is_number(self, n):
-        return isinstance(n, int) or n.isdigit()
+        return n.isdigit()
 
     def throw_syntax_error(self,  message):
         sys.exit(f'{message} at line: {self.lineIndex}')
@@ -120,7 +106,3 @@ with open('./test.asm', 'r') as fp:
 
     for idx, token in enumerate(parser.tokens):
         print(token.kind, token.value)
-        if isinstance(token.value, list):
-            for child_token in token.value:
-                print('   ', child_token.kind, child_token.value)
-
