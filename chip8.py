@@ -17,8 +17,43 @@ from CPU     import CPU
 pygame.init()
 screen = pygame.display.set_mode([500, 500])
 
+class Keyboard:
+    def __init__(self):
+        self.keys = {
+            pygame.K_0: 0x0,
+            pygame.K_1: 0x1,
+            pygame.K_2: 0x2,
+            pygame.K_3: 0x3,
+            pygame.K_4: 0x4,
+            pygame.K_5: 0x5,
+            pygame.K_6: 0x6,
+            pygame.K_7: 0x7,
+            pygame.K_8: 0x8,
+            pygame.K_9: 0x9,
+            pygame.K_a: 0xA,
+            pygame.K_b: 0xB,
+            pygame.K_c: 0xC,
+            pygame.K_d: 0xD,
+            pygame.K_e: 0xE,
+            pygame.K_f: 0xF,
+        }
 
+    def handler(self, keypad):
 
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+
+            elif event.type == pygame.KEYDOWN:
+                if event.key in self.keys:
+                    pressedKey = self.keys[ event.key ]
+                    keypad[ pressedKey ] = 0x1
+            
+            elif event.type == pygame.KEYUP:
+                if event.key in self.keys:
+                    pressedKey = self.keys[ event.key ]
+                    keypad[ pressedKey ] = 0x0
+                
 class Chip8:
     def __init__(self):
 
@@ -26,7 +61,8 @@ class Chip8:
         self.cpu     = CPU()
         self.video   = Display(screen)
 
-        self.keypad  = bytearray([0] * 16)
+        self.keypad  = [0] * 16
+        self.keyboard = Keyboard()
         self.fontset = [
             0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
             0x20, 0x60, 0x20, 0x20, 0x70, # 1
@@ -60,30 +96,22 @@ class Chip8:
             self.memory.write(i, self.fontset[i])
 
     def reset(self):
-        self.cpu = CPU()
+        self.cpu  = CPU()
         self.memory = Memory()
         self.video.clear()
 
-    def tick(self):
+    def run(self):
+        clock = pygame.time.Clock()
         running = True
         while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
+            # clock.tick(60)
+            self.keyboard.handler(self.keypad)
 
             self.cpu.opcode = (self.memory.read(self.cpu.pc) << 8) | self.memory.read(self.cpu.pc + 1)
-            try: self.execute(self.cpu.opcode)
-            except (NotImplementedError) as e:
-                print('-------------- error ---------------')
-                self.cpu.dump()
-                print(e)
-                print('-------------- error ---------------')
-                sys.exit(1)
+            self.execute(self.cpu.opcode)
 
-            if self.cpu.timer['delay'] > 0:
-                self.cpu.timer['delay'] -= 1
-            if self.cpu.timer['sound'] > 0:
-                self.cpu.timer['sound'] -= 1
+            if self.cpu.timer['delay'] > 0: self.cpu.timer['delay'] -= 1
+            if self.cpu.timer['sound'] > 0: self.cpu.timer['sound'] -= 1
             
             self.video.render()
             pygame.display.flip()
@@ -141,7 +169,7 @@ class Chip8:
         # Super Chip-48 Instructions
         elif operation == 0xf and (opcode & 0xff) == 0x75: sys.exit('super chip8 not implemented')
         elif operation == 0xf and (opcode & 0xff) == 0x85: sys.exit('super chip8 not implemented')
-        else: raise NotImplementedError(f'(???) Failed to execute opcode: {hex(opcode)}, operation:{hex(operation)} {hex(opcode & 0xff)}')
+        else: sys.exit(f'(???) Failed to execute opcode: {hex(opcode)}, operation:{hex(operation)} {hex(opcode & 0xff)}')
 
     # -- BEGIN INPUT HANDLE --
     def skp_pressed(self, x):
@@ -208,76 +236,18 @@ class Chip8:
     def fx18(self, x):
         print(f'LD ST, V{x}')
         self.cpu.timer['sound'] = self.cpu.v[x]
+    
     def fx0a(self, x):
         print(f'LD V{x}, K')
-        key_pressed = False
-        while not key_pressed:
-            pygame.event.get()
-            key = pygame.key.get_pressed()
-            if key[pygame.K_0]:
-                self.cpu.v[x] = 0x0
-                self.keypad[0x0] = 1
-                break
-            if key[pygame.K_1]:
-                self.cpu.v[x] = 0x1
-                self.keypad[0x1] = 1
-                break
-            if key[pygame.K_2]:
-                self.cpu.v[x] = 0x2
-                self.keypad[0x2] = 1
-                break
-            if key[pygame.K_3]:
-                self.cpu.v[x] = 0x3
-                self.keypad[0x3] = 1
-                break
-            if key[pygame.K_4]:
-                self.cpu.v[x] = 0x4
-                self.keypad[0x4] = 1
-                break
-            if key[pygame.K_5]:
-                self.cpu.v[x] = 0x5
-                self.keypad[0x5] = 1
-                break
-            if key[pygame.K_6]:
-                self.cpu.v[x] = 0x6
-                self.keypad[0x6] = 1
-                break
-            if key[pygame.K_7]:
-                self.cpu.v[x] = 0x7
-                self.keypad[0x7] = 1
-                break
-            if key[pygame.K_8]:
-                self.cpu.v[x] = 0x8
-                self.keypad[0x8] = 1
-                break
-            if key[pygame.K_9]:
-                self.cpu.v[x] = 0x9
-                self.keypad[0x9] = 1
-                break
-            if key[pygame.K_a]:
-                self.cpu.v[x] = 0xa
-                self.keypad[0xa] = 1
-                break
-            if key[pygame.K_b]:
-                self.cpu.v[x] = 0xb
-                self.keypad[0xb] = 1
-                break
-            if key[pygame.K_c]:
-                self.cpu.v[x] = 0xc
-                self.keypad[0xc] = 1
-                break
-            if key[pygame.K_d]:
-                self.cpu.v[x] = 0xd
-                self.keypad[0xd] = 1
-                break
-            if key[pygame.K_e]:
-                self.cpu.v[x] = 0xe
-                self.keypad[0xe] = 1
-                break
-            if key[pygame.K_f]:
-                self.cpu.v[x] = 0xf
-                self.keypad[0xf] = 1
-                break
+        # wait for key to pressed
+        pressed = False
+        while not pressed:
+            self.keyboard.handler(self.keypad)
+            for key in range(0, len(self.keypad)):
+                if self.keypad[key] == 0x1:
+                    self.cpu.v[x] = key
+                    pressed = True
+
     def fx07(self, x):
         print(f'LD V{x}, DT')
         self.cpu.v[x] = self.cpu.timer['delay']
@@ -324,11 +294,10 @@ class Chip8:
                 if (sprite & 0x80) > 0:
                     screenY = (locY + row) % self.video.rows
                     screenX = (locX + col) % self.video.cols
-                    self.video.buffer[ screenY ][ screenX ] ^= sprite
-                    if self.video.buffer[ screenY ][ screenX ] != 0:
+                    if self.video.buffer[ screenY ][ screenX ] == 1:
                         self.cpu.v[0xf] = 0x1
-                sprite = sprite << 1
-
+                    self.video.buffer[ screenY ][ screenX ] ^= 1
+                sprite <<= 1
     def SE_Vx_kk(self, x, kk):
         print(f'SE V{x}, {hex(kk)}')
         if self.cpu.v[x] == kk:
@@ -375,22 +344,20 @@ class Chip8:
         self.cpu.v[x] = kk
 
 chip8 = Chip8()
-# filename = "./ROMS/KALEID"
-# filename = "./ROMS/PUZZLE"
-# filename = "./ROMS/test_opcode.ch8"
-# filename = "./ROMS/IBM"
-# filename = "./ROMS/BC_TEST"
-# filename = "./ROMS/MISSILE"
-# filename = "./ROMS_TEST/test_opcode.ch8"
-
+# romname = "./ROMS/KALEID"
+# romname = "./ROMS/PUZZLE"
+# romname = "./ROMS/test_opcode.ch8"
+# romname = "./ROMS/IBM"
+# romname = "./ROMS/BC_TEST"
+# romname = "./ROMS/MISSILE"
+# romname = "./ROMS_TEST/test_opcode.ch8"
 
 if len(sys.argv) == 2:
     if os.path.isfile(sys.argv[1]):
-        filename = sys.argv[1]
+        romname = sys.argv[1]
     else:
         sys.exit(f'[__ERROR__] file {sys.argv[1]} doesnt exist')
 
 
-chip8.load(filename)
-chip8.tick()
-
+chip8.load(romname)
+chip8.run()
