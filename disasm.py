@@ -2,38 +2,13 @@ import sys
 import os
 import os.path
 
-os.system("clear")
-
-if len(sys.argv) != 2:
-    print('Please provider file path')
-    sys.exit()
-
-if not os.path.isfile(sys.argv[1]):
-    print('File doesn\'t exist')
-    sys.exit()
-
-filename = sys.argv[1] # './GREET'
-rom = bytearray([0] * 4096)
-with open(filename, 'rb') as fp:
-    rom = bytearray(fp.read())
-
-print(f'ROM len:{len(rom)}')
-print(f'| {"addr":<6} | {"opcode"} | instruction ')
-print('----------------------------------------')
-for pc in range(0, len(rom), 2):
-    
-    if pc + 1 >= len(rom):
-        break
-
-    opcode = (rom[pc] << 8) | (rom[pc + 1])
+def disassemble(opcode):
     ins    = (opcode & 0xf000) >> 12
     x      = (opcode & 0x0f00) >> 8
     y      = (opcode & 0x00f0) >> 4
     nibble =  opcode & 0x000f
     kk     =  opcode & 0x00ff
     nnn    =  opcode & 0x0fff
-
-    print(f'| 0x{pc + 0x200:04x} | 0x{opcode:04x} | ', end='')
     
     if   ins == 0x0 and opcode == 0x00e0: print('CLS')
     elif ins == 0x0 and opcode == 0x00ee: print('RET')
@@ -71,4 +46,36 @@ for pc in range(0, len(rom), 2):
     elif ins == 0xf and (opcode & 0xff) == 0x33: print(f'LD   B,   V{x}')
     elif ins == 0xf and (opcode & 0xff) == 0x55: print(f'LD   [I], V{x}')
     elif ins == 0xf and (opcode & 0xff) == 0x65: print(f'LD   V{x},  [I]')
-    else: print(f'---')
+    else: print('---')
+
+
+
+if __name__ == '__main__':
+
+    os.system("clear")
+
+    if len(sys.argv) != 2:
+        print('Please provider file path')
+        sys.exit()
+
+    if not os.path.isfile(sys.argv[1]):
+        print('File doesn\'t exist')
+        sys.exit()
+
+    filename = sys.argv[1] # './GREET'
+    rom = bytearray([0] * 4096)
+    with open(filename, 'rb') as fp:
+        rom = bytearray(fp.read())
+
+    print(f'ROM len:{len(rom)}')
+    print(f'| {"addr":<6} | {"opcode"} | instruction ')
+    print('----------------------------------------')
+    for pc in range(0, len(rom), 2):
+        
+        if pc + 1 >= len(rom):
+            break
+
+        opcode = (rom[pc] << 8) | (rom[pc + 1])
+        print(f'| 0x{pc + 0x200:04x} | 0x{opcode:04x} | ', end='')
+        disassemble(opcode)
+    

@@ -14,8 +14,10 @@ from Display import Display
 from Memory  import Memory
 from CPU     import CPU
 
+import disasm
+
 pygame.init()
-screen = pygame.display.set_mode([500, 500])
+screen  = pygame.display.set_mode([500, 500])
 
 class Keyboard:
     def __init__(self):
@@ -82,6 +84,12 @@ class Chip8:
             0xF0, 0x80, 0xF0, 0x80, 0x80  # F
         ]
 
+        self.operations = {
+            0x0: self.CLS_RET, # CLS_RET
+            0x1: self.JP,
+            0x2: self.CALL
+        }
+
     def load(self, filename):
         self.reset()
         with open(filename, 'rb') as fp:
@@ -99,9 +107,10 @@ class Chip8:
         self.cpu  = CPU()
         self.memory = Memory()
         self.video.clear()
+        self.keypad = [0] * 16
 
     def run(self):
-        clock = pygame.time.Clock()
+        # clock = pygame.time.Clock()
         running = True
         while running:
             # clock.tick(60)
@@ -126,7 +135,9 @@ class Chip8:
         nnn  =  opcode & 0x0fff
 
         self.cpu.pc += 2
-
+        disasm.disassemble(opcode)
+        
+        # ==[ main operations ]==
         if   operation == 0x0: self.CLS_RET(opcode)
         elif operation == 0x1: self.JP(nnn)
         elif operation == 0x2: self.CALL(nnn)
@@ -136,16 +147,15 @@ class Chip8:
         elif operation == 0x6: self.LD_VX(x, kk)
         elif operation == 0x7: self.ADD_VX(x, kk)
         elif operation == 0x9: self.SNE_Vx_Vy(x, y)
-
         elif operation == 0xa: self.LD_I(nnn)
         elif operation == 0xc: self.RND(x, kk)
         elif operation == 0xd: self.DRAW(x, y, n)
 
-        # ==[ inputs ]==
+        # ==[ input operations ]==
         elif operation == 0xe and (opcode & 0xff) == 0x9e: self.skp_pressed(x)
         elif operation == 0xe and (opcode & 0xff) == 0xa1: self.skp_not_pressed(x)
 
-        # ==[ logical instructions ]==
+        # ==[ logical operations ]==
         elif operation == 0x8 and (opcode & 0xf) == 0x0: self.lo_ld(x, y)
         elif operation == 0x8 and (opcode & 0xf) == 0x1: self.lo_or(x, y)
         elif operation == 0x8 and (opcode & 0xf) == 0x2: self.lo_and(x, y)
@@ -156,7 +166,7 @@ class Chip8:
         elif operation == 0x8 and (opcode & 0xf) == 0x7: self.lo_subn(x, y)
         elif operation == 0x8 and (opcode & 0xf) == 0xe: self.lo_shl(x, y)
 
-        # ==[ subroutine instructions ]==
+        # ==[ subroutine operations ]==
         elif operation == 0xf and (opcode & 0xff) == 0x07: self.fx07(x)
         elif operation == 0xf and (opcode & 0xff) == 0x0a: self.fx0a(x)
         elif operation == 0xf and (opcode & 0xff) == 0x55: self.fx55(x)
@@ -166,6 +176,7 @@ class Chip8:
         elif operation == 0xf and (opcode & 0xff) == 0x65: self.fx65(x)
         elif operation == 0xf and (opcode & 0xff) == 0x29: self.fx29(x)
         elif operation == 0xf and (opcode & 0xff) == 0x33: self.fx33(x)
+        
         # Super Chip-48 Instructions
         elif operation == 0xf and (opcode & 0xff) == 0x75: sys.exit('super chip8 not implemented')
         elif operation == 0xf and (opcode & 0xff) == 0x85: sys.exit('super chip8 not implemented')
@@ -173,27 +184,21 @@ class Chip8:
 
     # -- BEGIN INPUT HANDLE --
     def skp_pressed(self, x):
-        print(f'SKP V{x}')
         if self.keypad[x] == 1:
             self.cpu.pc += 2
     def skp_not_pressed(self, x):
-        print(f'SKNP V{x}')
         if self.keypad[x] == 0:
             self.cpu.pc += 2
 
     # -- BEGIN Logical Operatios
     def lo_ld(self, x, y):
-        print(f'LD V{x}, V{y}')
         self.cpu.v[x] = self.cpu.v[y]
     def lo_or(self, x, y):
-        print(f'OR V{x}, V{y}')
         self.cpu.v[x] |= self.cpu.v[y]
     def lo_shr(self, x, y):
-        print(f'SHR V{x} [, V{y}]')
         self.cpu.v[0xF] = self.cpu.v[x] & 0x1
         self.cpu.v[x] = (self.cpu.v[x] >> 1) & 0xff
     def lo_shl(self, x, y):
-        print(f'SHL V{x} [, V{y}]')
         self.cpu.v[0xF] = self.cpu.v[x] >> 7
         self.cpu.v[x] = (self.cpu.v[x] << 1) & 0xff
     def lo_add(self, x, y):
@@ -204,20 +209,16 @@ class Chip8:
             self.cpu.v[0xf] = 0
         self.cpu.v[x] = (self.cpu.v[x] + self.cpu.v[y]) & 0xff
     def lo_xor(self, x, y):
-        print(f'XOR V{x}, V{y}')
         self.cpu.v[x] ^= self.cpu.v[y]
     def lo_and(self, x, y):
-        print(f'AND V{x}, V{y}')
         self.cpu.v[x] &= self.cpu.v[y]
     def lo_sub(self, x, y):
-        print(f'SUB V{x}, V{y}')
         if self.cpu.v[x] >= self.cpu.v[y]:
             self.cpu.v[0xf] = 1
         else:
             self.cpu.v[0xf] = 0
         self.cpu.v[x] = (self.cpu.v[x] - self.cpu.v[y]) & 0xff
     def lo_subn(self, x, y):
-        print(f'SUBN V{x}, V{y}')
         if self.cpu.v[y] >= self.cpu.v[x]:
             self.cpu.v[0xf] = 1
         else:
@@ -226,19 +227,15 @@ class Chip8:
 
     # -- BEGIN Subroutine Operations
     def fx33(self, x): # BCD
-        print(f'LD B, V{x}')
         self.memory.write(self.cpu.i + 0, self.cpu.v[x] // 100)
         self.memory.write(self.cpu.i + 1, self.cpu.v[x] % 100 // 10)
         self.memory.write(self.cpu.i + 2, self.cpu.v[x] % 10)
     def fx15(self, x):
-        print(f'LD DT, V{x}')
         self.cpu.timer['delay'] = self.cpu.v[x]
     def fx18(self, x):
-        print(f'LD ST, V{x}')
         self.cpu.timer['sound'] = self.cpu.v[x]
     
     def fx0a(self, x):
-        print(f'LD V{x}, K')
         # wait for key to pressed
         pressed = False
         while not pressed:
@@ -249,42 +246,33 @@ class Chip8:
                     pressed = True
 
     def fx07(self, x):
-        print(f'LD V{x}, DT')
         self.cpu.v[x] = self.cpu.timer['delay']
     def fx29(self, x):
-        print(f'LD I, V{x}')
         self.cpu.i = (self.cpu.v[x] * 0x5) & 0xff
     def fx1e(self, x):
-        print(f'ADD {hex(self.cpu.i)}, V{x}')
         self.cpu.i += self.cpu.v[x]
     def fx55(self, x):
         for counter in range(0, x + 1):
-            print(f'LD [{hex(self.cpu.i)}], V{x}')
             self.memory.write(self.cpu.i + counter, self.cpu.v[counter])
     def fx65(self, x):
         for counter in range(0, x + 1):
-            print(f'LD V{x}, [{hex(self.cpu.i + counter)}]')
             self.cpu.v[counter] = self.memory.read(self.cpu.i + counter)
     # -- END  Subroutine Operations
 
     def RND(self, x, kk):
-        print(f'RND V{x} {hex(kk)}')
         rnd = numpy.random.randint(0x0, 0xff)
         self.cpu.v[x] = rnd & kk
 
     def JP(self, nnn):
-        print(f'JP {hex(nnn)}')
         if nnn == 0x450:
             self.cpu.dump()
             input()
         self.cpu.pc = nnn
 
     def ADD_VX(self, x, kk):
-        print(f'ADD V{x}, {hex(kk)}')
         self.cpu.v[x] = (self.cpu.v[x] + kk) & 0xff
 
     def DRAW(self, x, y, nibble):
-        print(f'DRW V{hex(x)}, V{hex(y)}, {hex(nibble)}')
         locX = self.cpu.v[x]
         locY = self.cpu.v[y]
         self.cpu.v[0xf] = 0x0
@@ -298,49 +286,41 @@ class Chip8:
                         self.cpu.v[0xf] = 0x1
                     self.video.buffer[ screenY ][ screenX ] ^= 1
                 sprite <<= 1
+
     def SE_Vx_kk(self, x, kk):
-        print(f'SE V{x}, {hex(kk)}')
         if self.cpu.v[x] == kk:
             self.cpu.pc += 2
 
     def SE_Vx_Vy(self, x, y):
-        print(f'SE V{x}, V{y}')
         if self.cpu.v[x] == self.cpu.v[y]:
             self.cpu.pc += 2
 
     def CALL(self, nnn):
-        print(f'CALL {hex(nnn)}')
         self.cpu.stack[ self.cpu.sp ] = self.cpu.pc
         self.cpu.sp += 1
         self.cpu.pc = nnn
 
     def LD_I(self, nnn):
-        print(f'LD I, {hex(nnn)}')
         self.cpu.i = nnn
 
     def SNE_Vx_kk(self, x, kk):
-        print(f'SNE {hex(self.cpu.v[x])}, {hex(kk)}')
         if self.cpu.v[x] != kk:
             self.cpu.pc += 2
 
     def SNE_Vx_Vy(self, x, y):
-        print(f'SNE V{x}, V{y}')
         if self.cpu.v[x] != self.cpu.v[y]:
             self.cpu.pc += 2
 
     def CLS_RET(self, opcode):
         # CLS
         if opcode == 0x0000:
-            print('CLS')
             self.video.clear()
         # RET
         if opcode == 0x00ee:
-            print(f'RET {hex(self.cpu.stack[ self.cpu.sp - 1 ])}')
             self.cpu.pc = self.cpu.stack[ self.cpu.sp - 1 ]
             self.cpu.sp -= 1
 
     def LD_VX(self, x, kk):
-        print(f'LD V{x}, {hex(kk)}')
         self.cpu.v[x] = kk
 
 chip8 = Chip8()
