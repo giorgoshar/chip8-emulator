@@ -10,61 +10,24 @@ import os.path
 import numpy
 import pygame
 
-from Display import Display
-from Memory  import Memory
-from CPU     import CPU
+from devices.CPU      import CPU
+from devices.Memory   import Memory
+from devices.Display  import Display
+from devices.Keyboard import Keyboard
 
 import disasm
 
 pygame.init()
 screen  = pygame.display.set_mode([500, 500])
 
-class Keyboard:
-    def __init__(self):
-        self.keys = {
-            pygame.K_0: 0x0,
-            pygame.K_1: 0x1,
-            pygame.K_2: 0x2,
-            pygame.K_3: 0x3,
-            pygame.K_4: 0x4,
-            pygame.K_5: 0x5,
-            pygame.K_6: 0x6,
-            pygame.K_7: 0x7,
-            pygame.K_8: 0x8,
-            pygame.K_9: 0x9,
-            pygame.K_a: 0xA,
-            pygame.K_b: 0xB,
-            pygame.K_c: 0xC,
-            pygame.K_d: 0xD,
-            pygame.K_e: 0xE,
-            pygame.K_f: 0xF,
-        }
-
-    def handler(self, keypad):
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit()
-
-            elif event.type == pygame.KEYDOWN:
-                if event.key in self.keys:
-                    pressedKey = self.keys[ event.key ]
-                    keypad[ pressedKey ] = 0x1
-            
-            elif event.type == pygame.KEYUP:
-                if event.key in self.keys:
-                    pressedKey = self.keys[ event.key ]
-                    keypad[ pressedKey ] = 0x0
-                
 class Chip8:
     def __init__(self):
 
-        self.memory  = Memory()
-        self.cpu     = CPU()
-        self.video   = Display(screen)
-
-        self.keypad  = [0] * 16
+        self.memory   = Memory(4096)
+        self.cpu      = CPU()
+        self.video    = Display(screen)
         self.keyboard = Keyboard()
+
         self.fontset = [
             0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
             0x20, 0x60, 0x20, 0x20, 0x70, # 1
@@ -84,16 +47,10 @@ class Chip8:
             0xF0, 0x80, 0xF0, 0x80, 0x80  # F
         ]
 
-        self.operations = {
-            0x0: self.CLS_RET, # CLS_RET
-            0x1: self.JP,
-            0x2: self.CALL
-        }
-
     def load(self, filename):
         self.reset()
         with open(filename, 'rb') as fp:
-            rom = bytearray(fp.read())
+            rom = fp.read()
         
         # load rom to memory
         for offset, byte in enumerate(rom):
@@ -105,22 +62,25 @@ class Chip8:
 
     def reset(self):
         self.cpu  = CPU()
-        self.memory = Memory()
+        self.memory = Memory(4096)
         self.video.clear()
-        self.keypad = [0] * 16
+        self.keyboard.reset()
 
     def run(self):
         # clock = pygame.time.Clock()
         running = True
         while running:
             # clock.tick(60)
-            self.keyboard.handler(self.keypad)
+
+            self.keyboard.handle()
 
             self.cpu.opcode = (self.memory.read(self.cpu.pc) << 8) | self.memory.read(self.cpu.pc + 1)
             self.execute(self.cpu.opcode)
 
-            if self.cpu.timer['delay'] > 0: self.cpu.timer['delay'] -= 1
-            if self.cpu.timer['sound'] > 0: self.cpu.timer['sound'] -= 1
+            if self.cpu.timer['delay'] > 0: 
+                self.cpu.timer['delay'] -= 1
+            if self.cpu.timer['sound'] > 0: 
+                self.cpu.timer['sound'] -= 1
             
             self.video.render()
             pygame.display.flip()
@@ -135,7 +95,7 @@ class Chip8:
         nnn  =  opcode & 0x0fff
 
         self.cpu.pc += 2
-        disasm.disassemble(opcode)
+        # disasm.disassemble(opcode)
         
         # ==[ main operations ]==
         if   operation == 0x0: self.CLS_RET(opcode)
@@ -184,10 +144,10 @@ class Chip8:
 
     # -- BEGIN INPUT HANDLE --
     def skp_pressed(self, x):
-        if self.keypad[x] == 1:
+        if self.keyboard.keypad[x] == 1:
             self.cpu.pc += 2
     def skp_not_pressed(self, x):
-        if self.keypad[x] == 0:
+        if self.keyboard.keypad[x] == 0:
             self.cpu.pc += 2
 
     # -- BEGIN Logical Operatios
@@ -234,17 +194,15 @@ class Chip8:
         self.cpu.timer['delay'] = self.cpu.v[x]
     def fx18(self, x):
         self.cpu.timer['sound'] = self.cpu.v[x]
-    
     def fx0a(self, x):
         # wait for key to pressed
         pressed = False
         while not pressed:
-            self.keyboard.handler(self.keypad)
-            for key in range(0, len(self.keypad)):
-                if self.keypad[key] == 0x1:
+            self.keyboard.handle()
+            for key in range(0, len(self.keyboard.keypad)):
+                if self.keyboard.keypad[key] == 0x1:
                     self.cpu.v[x] = key
                     pressed = True
-
     def fx07(self, x):
         self.cpu.v[x] = self.cpu.timer['delay']
     def fx29(self, x):

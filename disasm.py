@@ -13,13 +13,13 @@ def disassemble(opcode):
     if   ins == 0x0 and opcode == 0x00e0: print('CLS')
     elif ins == 0x0 and opcode == 0x00ee: print('RET')
 
-    elif ins == 0x1: print(f'JP   {nnn:x}')
-    elif ins == 0x2: print(f'CALL {nnn:x}')
-    elif ins == 0x3: print(f'SE   V{x}, {kk:x}')
-    elif ins == 0x4: print(f'SNE  V{x}, {kk:x}')
+    elif ins == 0x1: print(f'JP   {hex(nnn)}')
+    elif ins == 0x2: print(f'CALL {hex(nnn)}')
+    elif ins == 0x3: print(f'SE   V{x}, {hex(kk)}')
+    elif ins == 0x4: print(f'SNE  V{x}, {hex(kk)}')
     elif ins == 0x5: print(f'SE   V{x}, V{y}')
-    elif ins == 0x6: print(f'LD   V{x}, {kk:x}')
-    elif ins == 0x7: print(f'ADD  V{x}, {kk:x}')
+    elif ins == 0x6: print(f'LD   V{x}, {hex(kk)}')
+    elif ins == 0x7: print(f'ADD  V{x}, {hex(kk)}')
     
     elif ins == 0x8 and (opcode & 0xf) == 0x0: print(f'LD   V{x}, V{y}')
     elif ins == 0x8 and (opcode & 0xf) == 0x1: print(f'OR   V{x}, V{y}')
@@ -32,9 +32,9 @@ def disassemble(opcode):
     elif ins == 0x8 and (opcode & 0xf) == 0xe: print(f'SHL  V{x}  [, V{y}]')
 
     elif ins == 0x9: print(f'SNE  V{x}, V{y}')
-    elif ins == 0xa: print(f'LD   I, {nnn:x}')
+    elif ins == 0xa: print(f'LD   I, {hex(nnn)}')
     elif ins == 0xe: print(f'SHL  V{x} [, V{y}]')
-    elif ins == 0xc: print(f'RND  V{x} {kk:x}')
+    elif ins == 0xc: print(f'RND  V{x} {hex(kk)}')
     elif ins == 0xd: print(f'DRW  V{x}, V{y}, {nibble}')
 
     elif ins == 0xf and (opcode & 0xff) == 0x07: print(f'LD   V{x},  DT')

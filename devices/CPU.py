@@ -10,6 +10,7 @@ class CPU:
             'delay' : 0,
             'sound' : 0
         }
+        self.cycle  = 0
         self.opcode = 0x0
 
     def dump(self):
