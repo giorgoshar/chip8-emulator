@@ -1,4 +1,5 @@
 cls
-rm .\maze.o
-py .\asm\asm.py .\maze.asm
-py .\emulator\chip8.py .\maze.o
+rm .\test.o
+py .\asm\asm.py .\test.asm
+py .\emulator\chip8.py .\test.o
+py .\disasm\disasm.py  .\test.o

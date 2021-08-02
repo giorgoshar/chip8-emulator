@@ -12,7 +12,7 @@ class Token:
         return f'{self.kind:15} {self.value:<15} Location:{self.loc}'.replace('\n', '\\n')
 
 class Tokenizer:
-    keywords   = {'jmp', 'call', 'load', 'cls', 'draw', 'add', 'se', 'rand'}
+    keywords   = {'jmp', 'call', 'load', 'cls', 'draw', 'add', 'se', 'rand', 'sne', 'call', 'ret'}
     def __init__(self):
         self.tokens = []
     # https://docs.python.org/3/library/re.html#writing-a-tokenizer
@@ -98,15 +98,16 @@ class Parser:
                     tok = next(self.tokens)
                     if tok.kind != 'ID':
                         self.excepted('ID', tok)
+
                     for i in range(0, 5):
-                        tok = next(self.tokens)
+                        tok   = next(self.tokens)
                         font  = tok.value.replace('"', '')
                         bfont = ''
                         for c in font:
                             if   c == ' ': bfont += '0'
                             elif c == '*': bfont += '1'
                             else: exit('font is wrong beeee')
-                            self.binary.extend([int(bfont, 2) & 0xff])
+                        self.binary.extend([int(bfont, 2) & 0xff])
                     
                     # while True:
                     #     tok = next(self.tokens)
@@ -125,8 +126,8 @@ class Parser:
 
             elif tok.kind == 'JMP':
                 tok = next(self.tokens)
-                if tok.kind not in ['ID']:
-                    exit('excepted id but got type of ' + tok.kind)
+                if tok.kind != 'ID':
+                    self.excepted('ID', tok)
                 
                 if tok.value not in [symbol[0] for symbol in self.labels]:
                     exit('could not find symbol ' + tok.value + ' in labels')
@@ -162,7 +163,7 @@ class Parser:
                             exit('Could not find identifier: ' + tok.value)
                         addr = int(sym[1]) & 0xfff
                     elif tok.kind == 'NUMBER':
-                        addr = (self.parse_number(tok.value) * 5) & 0xfff
+                        addr = self.parse_number(tok.value) & 0xfff
                     elif tok.kind == 'REGISTER':
                         reg_x  = int(tok.value) & 0xf
                         opcode = (0xF055 | (reg_x << 8)).to_bytes(2, 'big')
@@ -199,11 +200,16 @@ class Parser:
                     reg_x = self.parse_number(tok.value)
 
                     tok = next(self.tokens)
-                    if tok.kind != 'NUMBER':
-                        self.excepted('NUMBER', tok)
-                    byte = self.parse_number(tok.value)
-                    opcode = 0x7000 | (reg_x << 8) | (0x00ff & byte)
-                    self.binary.extend(opcode.to_bytes(2, 'big'))
+                    if tok.kind == 'NUMBER':
+                        byte = self.parse_number(tok.value)
+                        opcode = 0x7000 | (reg_x << 8) | (0x00ff & byte)
+                        self.binary.extend(opcode.to_bytes(2, 'big'))
+                    elif tok.kind == 'REGISTER':
+                        reg_y = self.parse_number(tok.value)
+                        opcode = 0x8004 | (reg_x << 8) | (reg_y << 4)
+                        self.binary.extend(opcode.to_bytes(2, 'big'))
+                    else:
+                        self.excepted('NUMBER, REGISTER', tok)
                 elif tok.kind == 'REG_I':
                     tok = next(self.tokens)
                     if tok.kind != 'REGISTER':
@@ -237,6 +243,23 @@ class Parser:
                     self.excepted('REGISTER, NUMBER', tok)
                 self.binary.extend(opcode.to_bytes(2, 'big'))
 
+            elif tok.kind == 'SNE':
+                tok = next(self.tokens)
+                if tok.kind != 'REGISTER':
+                    self.excepted('REGISTER', tok)
+                reg_x = self.parse_register(tok.value)
+
+                tok = next(self.tokens)
+                if tok.kind == 'REGISTER':
+                    reg_y = self.parse_register(tok.value)
+                    opcode = 0x9000 | (reg_x << 8) |  ( reg_y << 4)
+                elif tok.kind == 'NUMBER':
+                    number = self.parse_number(tok.value)
+                    opcode = 0x4000 | (reg_x << 8) |  ( number & 0x00ff)
+                else:
+                    self.excepted('REGISTER, NUMBER', tok)
+                self.binary.extend(opcode.to_bytes(2, 'big'))
+
             elif tok.kind == 'RAND':
                 # Cxkk - RND Vx, byte
                 tok = next(self.tokens)
@@ -251,10 +274,30 @@ class Parser:
 
                 self.binary.extend((0xC000 | (reg_x  << 8) | (0x00ff & byte)).to_bytes(2, 'big'))
 
+            elif tok.kind == 'CALL':
+                tok = next(self.tokens)
+                if tok.kind not in ['ID']:
+                    exit('excepted id but got type of ' + tok.kind)
+                
+                if tok.value not in [symbol[0] for symbol in self.labels]:
+                    exit('could not find symbol ' + tok.value + ' in labels')
+                
+                addr = None
+                for sym in self.labels:
+                    if sym[0] == tok.value:
+                        addr = sym[1]
+                if addr == None:
+                    exit('could not find symbol')
+                opcode = self.call(addr)
+                self.binary.extend(opcode)
+
+            elif tok.kind == 'RET':
+                self.binary.extend(0x00EE.to_bytes(2, 'big'))
+
             elif tok.kind == 'EOF':
                 break
 
-            else: exit(f'Could not parse token: {tok}')
+            else: exit(f'Could not parse {tok.kind}: {tok.value} at line:{tok.loc["lineno"]}')
 
         if tok.kind != 'EOF':
             self.excepted('EOF', tok)
@@ -314,7 +357,9 @@ class Parser:
     def parse_register(self, value: str) -> int:
         return int(value) & 0xf
     
-    
+    def call(self, addr):
+        opcode = 0x2000 | (addr & 0x0FFF)
+        return opcode.to_bytes(2, 'big')
     def jmp(self, addr):
         opcode = 0x1000 | (addr & 0x0FFF)
         return opcode.to_bytes(2, 'big')

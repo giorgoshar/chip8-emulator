@@ -1,19 +1,95 @@
 .org 0x200
 jmp main
-.ascii  "test loops"
 main:
-    count:
-        load [I], 0x0         ; set i = 0, start of 0 number int fonts
-        load v3,  0           ; index number font in memory
-        next:
-            cls               ; clear screen
-            load v1,  1       ; x position
-            load v2,  1       ; y position
-            add  [I], v3      ; i += v3
-            draw v1,  v2, 5   ; draw from v1 to v2, 5 bytes of font
-            add  v3,  5       ; v3 + 5
-            se   v3,  15      ; if v3 == 5 skip next instruction
-            jmp next          ; jump to next
-            jmp count
-loop:
-    jmp loop
+    load v1, 0 ; load register v1 0x0
+    se   v1, 0 ; if v1 == 0 skip next instruction
+    jmp  err   ; jmp err
+    
+    sne  v1, 1 ; if v1 != 1 skip next instruction
+    jmp  err   ; jmp err
+
+    call addition
+
+    jmp  done
+inf: jmp inf
+
+addition:
+    load v1, 0
+    load v2, 5
+    add  v1, v2
+    ret
+
+err:
+    load v1, 1
+    load v2, 1
+    load [I], ascii_E
+    draw v1, v2, 5
+
+    load v1, 7
+    load v2, 1
+    load [I], ascii_R
+    draw v1, v2, 5
+
+    load v1, 13
+    load v2, 1
+    load [I], ascii_R
+    draw v1, v2, 5
+
+    jmp inf
+done:
+    load v1, 1
+    load v2, 1
+    load [I], ascii_D
+    draw v1, v2, 5
+
+    load v1, 7
+    load v2, 1
+    load [I], ascii_O
+    draw v1, v2, 5
+
+    load v1, 13
+    load v2, 1
+    load [I], ascii_N
+    draw v1, v2, 5
+
+    load v1, 19
+    load v2, 1
+    load [I], ascii_E
+    draw v1, v2, 5
+
+    jmp inf
+
+.font ascii_E
+    " *****  "
+    " *      "
+    " *****  "
+    " *      "
+    " *****  "
+
+.font ascii_R
+    " *****  "
+    " *   *  "
+    " *****  "
+    " ****   "
+    " *   *  "
+
+.font ascii_D
+    " ****   "
+    " *   *  "
+    " *   *  "
+    " *   *  "
+    " ****   "
+
+.font ascii_O
+    " *****  "
+    " *   *  "
+    " *   *  "
+    " *   *  "
+    " *****  "
+
+.font ascii_N
+    " *   *  "
+    " **  *  "
+    " * * *  "
+    " *  **  "
+    " *   *  "
