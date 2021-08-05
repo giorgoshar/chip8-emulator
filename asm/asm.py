@@ -12,7 +12,7 @@ class Token:
         return f'{self.kind:15} {self.value:<15} Location:{self.loc}'.replace('\n', '\\n')
 
 class Tokenizer:
-    keywords   = {'jmp', 'call', 'load', 'cls', 'draw', 'add', 'se', 'rand', 'sne', 'call', 'ret'}
+    keywords   = {'jmp', 'load', 'cls', 'draw', 'add', 'rand', 'se', 'sne', 'call', 'ret'}
     def __init__(self):
         self.tokens = []
     # https://docs.python.org/3/library/re.html#writing-a-tokenizer
@@ -138,19 +138,24 @@ class Parser:
                         addr = sym[1]
                 if addr == None:
                     exit('could not find symbol')
-                opcode = self.jmp(addr)
-                self.binary.extend(opcode)
+                self.jmp(addr)
             
             elif tok.kind == 'LOAD':
                 tok = next(self.tokens)
                 if tok.kind == 'REGISTER':
-                    reg_x = int(tok.value)
+                    Vx  = int(tok.value) & 0x0f
                     tok = next(self.tokens)
+
                     if tok.kind == 'NUMBER':
-                        reg_y = self.parse_number(tok.value)
-                        opcode = (0x6000 | (reg_x << 8) | ( reg_y & 0x00ff)).to_bytes(2, 'big')
-                        
+                        Vy = self.parse_number(tok.value)
+                        opcode = (0x6000 | (Vx << 8) | ( Vy & 0x00ff)).to_bytes(2, 'big')
                         self.binary.extend(opcode)
+                    elif tok.kind == 'REG_I':
+                        # Fx65
+                        opcode = (0xF065  | (Vx << 8)).to_bytes(2, 'big')
+                        self.binary.extend(opcode)
+                    else: self.excepted('NUMBER', tok)
+                
                 elif tok.kind == 'REG_I':
                     tok = next(self.tokens)
                     if tok.kind == 'ID':
@@ -178,47 +183,44 @@ class Parser:
             elif tok.kind == 'DRAW':
                 tok = next(self.tokens)
                 if tok.kind != 'REGISTER':
-                    exit ('draw excepted register as 1st argument but got' + tok.kind)
+                    self.excepted('REGISTER', tok)
                 arg1 = int(tok.value)
 
                 tok = next(self.tokens)
                 if tok.kind != 'REGISTER':
-                    exit ('draw excepted register as 2nd argument but got' + tok.kind)
+                    self.excepted('REGISTER', tok)
                 arg2 = int(tok.value)
 
                 tok = next(self.tokens)
                 if tok.kind != 'NUMBER' and tok.value > 0xf:
-                    exit ('draw excepted number as 3rd argument but got' + tok.kind)
+                    self.excepted('NUMBER', tok)
                 arg3 = self.parse_number(tok.value)
 
-                opcode = self.draw(arg1, arg2, arg3)
-                self.binary.extend(opcode)
+                self.draw(arg1, arg2, arg3)
 
             elif tok.kind == 'ADD':
                 tok = next(self.tokens)
-                if   tok.kind == 'REGISTER':
-                    reg_x = self.parse_number(tok.value)
+                if tok.kind == 'REGISTER':
+                    Vx = self.parse_number(tok.value)
 
                     tok = next(self.tokens)
                     if tok.kind == 'NUMBER':
                         byte = self.parse_number(tok.value)
-                        opcode = 0x7000 | (reg_x << 8) | (0x00ff & byte)
-                        self.binary.extend(opcode.to_bytes(2, 'big'))
+                        opcode = 0x7000 | (Vx << 8) | (0x00ff & byte)
                     elif tok.kind == 'REGISTER':
-                        reg_y = self.parse_number(tok.value)
-                        opcode = 0x8004 | (reg_x << 8) | (reg_y << 4)
-                        self.binary.extend(opcode.to_bytes(2, 'big'))
-                    else:
-                        self.excepted('NUMBER, REGISTER', tok)
+                        Vy = self.parse_number(tok.value)
+                        opcode = 0x8004 | (Vx << 8) | (Vy << 4)
+                    else: self.excepted('NUMBER, REGISTER', tok)
                 elif tok.kind == 'REG_I':
                     tok = next(self.tokens)
                     if tok.kind != 'REGISTER':
                         self.excepted('REGISTER', tok)
-                    reg_x  = self.parse_number(tok.value) & 0xf
-                    opcode = 0xF01E | (reg_x << 8)
-                    self.binary.extend(opcode.to_bytes(2, 'big'))
-                else: self.expected('REGISTER, REG_I', tok)
-            
+                    Vx  = self.parse_number(tok.value) & 0xf
+                    opcode = 0xF01E | (Vx << 8)
+                else: self.excepted('REGISTER, REG_I', tok)
+
+                self.binary.extend(opcode.to_bytes(2, 'big'))
+
             elif tok.kind == 'CLS':
                 self.binary.extend(0x00E0.to_bytes(2, 'big'))
             
@@ -230,34 +232,34 @@ class Parser:
                 tok = next(self.tokens)
                 if tok.kind != 'REGISTER':
                     self.excepted('REGISTER', tok)
-                reg_x = self.parse_register(tok.value)
+                Vx = self.parse_register(tok.value)
 
                 tok = next(self.tokens)
                 if tok.kind == 'REGISTER':
-                    reg_y = self.parse_register(tok.value)
-                    opcode = 0x5000 | (reg_x << 8) |  ( reg_y << 4)
+                    Vy = self.parse_register(tok.value)
+                    opcode = 0x5000 | (Vx << 8) |  ( Vy << 4)
                 elif tok.kind == 'NUMBER':
                     number = self.parse_number(tok.value)
-                    opcode = 0x3000 | (reg_x << 8) |  ( number & 0x00ff)
-                else:
-                    self.excepted('REGISTER, NUMBER', tok)
+                    opcode = 0x3000 | (Vx << 8) |  ( number & 0x00ff)
+                else: self.excepted('REGISTER, NUMBER', tok)
+                
                 self.binary.extend(opcode.to_bytes(2, 'big'))
 
             elif tok.kind == 'SNE':
                 tok = next(self.tokens)
                 if tok.kind != 'REGISTER':
                     self.excepted('REGISTER', tok)
-                reg_x = self.parse_register(tok.value)
+                Vx = self.parse_register(tok.value)
 
                 tok = next(self.tokens)
                 if tok.kind == 'REGISTER':
-                    reg_y = self.parse_register(tok.value)
-                    opcode = 0x9000 | (reg_x << 8) |  ( reg_y << 4)
+                    Vy = self.parse_register(tok.value)
+                    opcode = 0x9000 | (Vx << 8) |  ( Vy << 4)
                 elif tok.kind == 'NUMBER':
                     number = self.parse_number(tok.value)
-                    opcode = 0x4000 | (reg_x << 8) |  ( number & 0x00ff)
-                else:
-                    self.excepted('REGISTER, NUMBER', tok)
+                    opcode = 0x4000 | (Vx << 8) |  ( number & 0x00ff)
+                else: self.excepted('REGISTER, NUMBER', tok)
+                
                 self.binary.extend(opcode.to_bytes(2, 'big'))
 
             elif tok.kind == 'RAND':
@@ -265,14 +267,14 @@ class Parser:
                 tok = next(self.tokens)
                 if tok.kind != 'REGISTER':
                     self.excepted('REGISTER', tok)
-                reg_x = self.parse_number(tok.value)
+                Vx = self.parse_number(tok.value)
 
                 tok = next(self.tokens)
                 if tok.kind != 'NUMBER':
                     self.excepted('NUMBER', tok)
                 byte = self.parse_number(tok.value)
 
-                self.binary.extend((0xC000 | (reg_x  << 8) | (0x00ff & byte)).to_bytes(2, 'big'))
+                self.binary.extend((0xC000 | (Vx  << 8) | (0x00ff & byte)).to_bytes(2, 'big'))
 
             elif tok.kind == 'CALL':
                 tok = next(self.tokens)
@@ -288,8 +290,7 @@ class Parser:
                         addr = sym[1]
                 if addr == None:
                     exit('could not find symbol')
-                opcode = self.call(addr)
-                self.binary.extend(opcode)
+                self.call(addr)
 
             elif tok.kind == 'RET':
                 self.binary.extend(0x00EE.to_bytes(2, 'big'))
@@ -358,19 +359,17 @@ class Parser:
         return int(value) & 0xf
     
     def call(self, addr):
-        opcode = 0x2000 | (addr & 0x0FFF)
-        return opcode.to_bytes(2, 'big')
+        opcode = (0x2000 | (addr & 0x0FFF)).to_bytes(2, 'big')
+        self.binary.extend(opcode)
     def jmp(self, addr):
-        opcode = 0x1000 | (addr & 0x0FFF)
-        return opcode.to_bytes(2, 'big')
+        opcode = (0x1000 | (addr & 0x0FFF)).to_bytes(2, 'big')
+        self.binary.extend(opcode)
     def draw(self, x, y, nibble):
-        opcode = 0xD000 | (x << 8) | (y << 4) | (nibble & 0x000f)
-        return opcode.to_bytes(2, 'big')
-    def load(self, operand1, operand2):
-        pass
-    def se(self, register, number):
-        pass
-    
+        opcode = (0xD000 | (x << 8) | (y << 4) | (nibble & 0x000f)).to_bytes(2, 'big')
+        self.binary.extend(opcode)
+
+
+
     def excepted(self, excepted: str, got: Token):
         raise Exception(f"Expected token {excepted} but got {got.kind} at line: { got.loc['lineno'] }")
     def unknown(self, tok: Token):

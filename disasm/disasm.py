@@ -53,7 +53,7 @@ while pc < len(rom) - 1:
     # ==[ subroutine operation ]==
     elif op == 0xf and (opcode & 0xff) == 0x07: print(f'{pc+0x200:<03x} | {opcode:<4x} | fx07(x)')
     elif op == 0xf and (opcode & 0xff) == 0x0a: print(f'{pc+0x200:<03x} | {opcode:<4x} | fx0a(x)')
-    elif op == 0xf and (opcode & 0xff) == 0x55: print(f'{pc+0x200:<03x} | {opcode:<4x} | fx55(x)')
+    elif op == 0xf and (opcode & 0xff) == 0x55: print(f'{pc+0x200:<03x} | {opcode:<4x} | LD  [I], V{x:x}')
     elif op == 0xf and (opcode & 0xff) == 0x1e: print(f'{pc+0x200:<03x} | {opcode:<4x} | ADD [I] V{x:x}')
     elif op == 0xf and (opcode & 0xff) == 0x15: print(f'{pc+0x200:<03x} | {opcode:<4x} | fx15(x)')
     elif op == 0xf and (opcode & 0xff) == 0x18: print(f'{pc+0x200:<03x} | {opcode:<4x} | fx18(x)')

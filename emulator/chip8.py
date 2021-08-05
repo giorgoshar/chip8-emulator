@@ -11,14 +11,19 @@ from devices.Keyboard import Keyboard
 # os.environ['SDL_VIDEODRIVER'] = 'windib'
 
 pygame.init()
-screen  = pygame.display.set_mode([1200, 900])
+screen = pygame.display.set_mode([1200, 900])
+font   = pygame.font.SysFont("monospace", 16)
+
+emulator_screen  = pygame.Surface((800, 600))
+memory_screen    = pygame.Surface((400, 600))
+registers_screen = pygame.Surface((400, 600))
 
 class Chip8:
     def __init__(self):
 
-        self.memory   = Memory(4096)
+        self.memory   = Memory(0x1000)
         self.cpu      = CPU()
-        self.video    = Display(screen)
+        self.video    = Display(emulator_screen)
         self.keyboard = Keyboard()
 
         self.fontset = [
@@ -62,8 +67,12 @@ class Chip8:
     def run(self):
         clock   = pygame.time.Clock()
         running = True
+        scroll_y = 0x200
         while running:
             # clock.tick(1000 / 60)
+            screen.fill((0, 0, 0))
+            emulator_screen.fill((0, 0, 0))
+            memory_screen.fill((0, 0, 0))
 
             self.keyboard.handle()
             self.cpu.opcode = (self.memory.read(self.cpu.pc) << 8) | self.memory.read(self.cpu.pc + 1)
@@ -73,8 +82,34 @@ class Chip8:
                 self.cpu.timer['delay'] -= 1
             if self.cpu.timer['sound'] > 0: 
                 self.cpu.timer['sound'] -= 1
-            
-            self.video.render()
+
+            j = 0
+            for i in range(scroll_y, len(self.memory.buffer), 2):
+                text = font.render(f'0x{i:<4x} | 0x{self.memory.buffer[i]:x} 0x{self.memory.buffer[i + 1]:x}', True, (255, 255, 255))
+                memory_screen.blit(text, (0, j))
+                j += 16
+
+            pressed_key = pygame.key.get_pressed()
+            if pressed_key[pygame.K_UP]:
+                scroll_y += 2
+                if scroll_y >= len(self.memory.buffer):
+                    scroll_y = len(self.memory.buffer) - 60
+            elif pressed_key[pygame.K_DOWN]:
+                scroll_y -= 2
+                if scroll_y < 0:
+                    scroll_y = 0
+
+            scale = 5
+            for row in range(0, len(self.video.buffer)):
+                for col in range(0, len(self.video.buffer[row])):
+                    color = 0x000000
+                    if self.video.buffer[row][col] != 0:
+                        color = 0xffffff
+                    pygame.draw.rect(emulator_screen, color , (col * scale, row * scale, scale, scale))
+
+            # self.video.render()
+            screen.blit(emulator_screen, (0, 0))
+            screen.blit(memory_screen, (800, 0))
             pygame.display.flip()
 
     def execute(self, opcode):
@@ -140,9 +175,6 @@ class Chip8:
         rnd = random.randint(0x0, 0xff)
         self.cpu.v[x] = rnd & kk
     def JP(self, nnn):
-        if nnn == 0x450:
-            self.cpu.dump()
-            input()
         self.cpu.pc = nnn
     def ADD_VX(self, x, kk):
         self.cpu.v[x] = (self.cpu.v[x] + kk) & 0xff
