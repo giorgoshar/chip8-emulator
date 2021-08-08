@@ -23,18 +23,14 @@ class Keyboard:
         }
         self.keypad = [0] * len(self.bindKeys)
 
-    def handle(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit()
-
-            elif event.type == pygame.KEYDOWN:
-                if event.key in self.bindKeys:
-                    self.keypad[ self.bindKeys[event.key] ] = 0x1
-            
-            elif event.type == pygame.KEYUP:
-                if event.key in self.bindKeys:
-                    self.keypad[ self.bindKeys[event.key] ] = 0x0
+    def handle(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key in self.bindKeys:
+                self.keypad[ self.bindKeys[event.key] ] = 0x1
+        
+        elif event.type == pygame.KEYUP:
+            if event.key in self.bindKeys:
+                self.keypad[ self.bindKeys[event.key] ] = 0x0  
 
     def reset(self):
         self.keypad = [0] * len(self.bindKeys)

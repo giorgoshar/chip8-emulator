@@ -1,13 +1,17 @@
 .org 0x200
-; .inc "letters.inc"
 jmp main
-.var x 0x1
-.var y 0x2
+; .var A 0x1
 main:
-    load v0, 0
-    load v1, 1
-    jmp done
-inf:  jmp inf
+    jmp  DrawGrid
+
+inf: jmp inf
+
+DrawGrid:
+    load v0, 0 ; x position
+    load v1, 0 ; y position
+    load [I], GRID
+    draw v0, v1, 8
+    jmp inf
 
 err:
     load v1, 1
@@ -54,3 +58,16 @@ done:
 .font letter_D 0x78 0x44 0x44 0x44 0x78, endfont
 .font letter_O 0x7c 0x44 0x44 0x44 0x7c, endfont
 .font letter_N 0x44 0x64 0x54 0x4c 0x44, endfont
+
+; 0xAA = 1010 1010
+; 0x55 = 0101 0101
+.font GRID  
+    0xAA ; line 1
+    0x55 ; line 2
+    0xAA ; line 3
+    0x55 ; line 4
+    0xAA ; line 5
+    0x55 ; line 6
+    0xAA ; line 7
+    0x55 ; line 8
+endfont

@@ -1,10 +1,11 @@
 import pygame
+
 class Display:
     def __init__(self, surface):
 
         self.cols  = 64
         self.rows  = 32 
-        self.scale = 5
+        self.scale = 8
 
         self.buffer = [ [0 for x in range(0, self.cols)] for y in range(0, self.rows) ]
         self.screen = surface
@@ -12,10 +13,10 @@ class Display:
     def render(self):
         for row in range(0, len(self.buffer)):
             for col in range(0, len(self.buffer[row])):
-                color = 0x000000
+                color = 0x1e1e1e
                 rect  = (col * self.scale, row * self.scale, self.scale, self.scale)
                 if self.buffer[row][col] != 0:
-                    color = 0xffffff
+                    color = 0xdcdc9f
                 pygame.draw.rect(self.screen, color , rect)
     
     def clear(self):

@@ -2,6 +2,16 @@ import sys
 import os
 import os.path
 import re
+'''
+    TODO: 
+        change endfont to DIRECTIVE
+        adding line number in label list 
+'''
+
+class SyntaxError(Exception): pass
+class Undefined(Exception):   pass
+class Unreachable(Exception): pass
+class NotImplemented(Exception): pass
 
 class Token:
     def __init__(self, kind: str, value: str, location: dict):
@@ -12,7 +22,7 @@ class Token:
         return f'{self.kind:15} {self.value:<15} Location:{self.loc}'.replace('\n', '\\n')
 
 class Tokenizer:
-    keywords   = {'jmp', 'load', 'cls', 'draw', 'add', 'rand', 'se', 'sne', 'call', 'ret'}
+    keywords   = {'jmp', 'load', 'cls', 'draw', 'add', 'rand', 'se', 'sne', 'call', 'ret', 'skp', 'sknp'}
     def __init__(self):
         self.tokens = []
     # https://docs.python.org/3/library/re.html#writing-a-tokenizer
@@ -20,7 +30,7 @@ class Tokenizer:
         token_specification = [
             ('NUMBER',   r'0[xX][0-9a-fA-F]+|[0-9]+'),        # Integer or decimal number
             ('STRING',   r'\".*\"'),             # Match string inside quotation and ""
-            ('REGISTER', r'[v|V]([0-9a-fA-F])'), # Match v1-vf registers
+            ('REGISTER', r'[v|V]([0-9a-fA-F]+)'), # Match v1-vf registers
             ('REG_I',    r'\[I\]'),              # match `i` register
             ('LABEL',    r'[A-Za-z_]+\:'),       # Match Labels
             ('ID',       r'[A-Za-z_]+'),         # Identifiers
@@ -70,6 +80,7 @@ class Tokenizer:
                 exit(f'unexpected `{value!r}` on line {line_num}')
 
         self.tokens.append(Token('EOF', '\0', location))
+        return self.tokens
 
     def __iter__(self):
         return iter(self.tokens)
@@ -79,145 +90,123 @@ class Parser:
         self.tokens  = []
         self.labels  = []
         self.binary  = bytearray()
+        self.tokidx  = 0
 
     def parse(self, tokens: list) -> bytearray:
-        self.tokens = iter(tokens)
         self.resolve_labels(tokens)
 
-        # iter_token = iter(self.tokens)
+        self.tokens = iter(tokens)
         for tok in self.tokens:
+            
             if tok.kind == 'DIRECTIVE':
                 if tok.value == 'ascii':
                     tok = next(self.tokens)
-                    if tok.kind != 'STRING':
-                        self.excepted('STRING', tok)
+                    self.expected(['STRING'], tok)
                     for i in range(1, len(tok.value) - 1):
                         self.binary.append(ord(tok.value[i]))
-                
+
                 elif tok.value == 'font':
                     tok = next(self.tokens)
-                    if tok.kind != 'ID':
-                        self.excepted('ID', tok)
-
-                    for i in range(0, 5):
-                        tok   = next(self.tokens)
-                        font  = tok.value.replace('"', '')
-                        bfont = ''
-                        for c in font:
-                            if   c == ' ': bfont += '0'
-                            elif c == '*': bfont += '1'
-                            else: exit('font is wrong beeee')
-                        self.binary.extend([int(bfont, 2) & 0xff])
+                    self.expected(['ID'], tok)
                     
-                    # while True:
-                    #     tok = next(self.tokens)
-                    #     if tok.kind != 'STRING':
-                    #         break
-                    #     font  = tok.value.replace('"', '')
-                    #     bfont = ''
-                    #     for c in font:
-                    #         if   c == ' ': bfont += '0'
-                    #         elif c == '*': bfont += '1'
-                    #         else: exit('font is wrong beeee')
-                    #     self.binary.extend([int(bfont, 2) & 0xff])
+                    while True:
+                        tok = next(self.tokens)
+                        if (tok.kind == 'ID') and (tok.value == 'endfont'):
+                            break
+                        self.expected(['NUMBER'], tok)
+                        bfont = self.parse_number(tok.value)
+                        self.binary.extend([bfont])
+                    self.expected(['ID'], tok) # expect ID: endfont
+                elif tok.value == 'inc':
+                    next(self.tokens)
+                    raise NotImplemented(tok)
                 elif tok.value == 'org':
                     next(self.tokens)
+                elif tok.value == 'var':
+                    next(self.tokens) # skip ID
+                    tok = next(self.tokens)
+                    self.expected(['NUMBER'], tok)
+                    number = self.parse_number(tok.value)
+                    self.binary.extend(number.to_bytes(2, 'big'))
                 else: self.unknown(tok)
 
             elif tok.kind == 'JMP':
                 tok = next(self.tokens)
-                if tok.kind != 'ID':
-                    self.excepted('ID', tok)
-                
-                if tok.value not in [symbol[0] for symbol in self.labels]:
-                    exit('could not find symbol ' + tok.value + ' in labels')
-                
-                addr = None
-                for sym in self.labels:
-                    if sym[0] == tok.value:
-                        addr = sym[1]
-                if addr == None:
-                    exit('could not find symbol')
+                self.expected(['ID'], tok)
+                label = self.find_label(tok)
+                addr  = self.parse_number(label[1]) & 0xfff
                 self.jmp(addr)
             
             elif tok.kind == 'LOAD':
                 tok = next(self.tokens)
+                self.expected(['REGISTER', 'REG_I'], tok)
                 if tok.kind == 'REGISTER':
-                    Vx  = int(tok.value) & 0x0f
+                    Vx  = self.parse_register(tok.value)
                     tok = next(self.tokens)
-
+                    self.expected(['NUMBER', 'REG_I'], tok)
                     if tok.kind == 'NUMBER':
                         Vy = self.parse_number(tok.value)
                         opcode = (0x6000 | (Vx << 8) | ( Vy & 0x00ff)).to_bytes(2, 'big')
                         self.binary.extend(opcode)
                     elif tok.kind == 'REG_I':
-                        # Fx65
                         opcode = (0xF065  | (Vx << 8)).to_bytes(2, 'big')
                         self.binary.extend(opcode)
-                    else: self.excepted('NUMBER', tok)
-                
                 elif tok.kind == 'REG_I':
                     tok = next(self.tokens)
+                    self.expected(['ID', 'NUMBER', 'REGISTER'], tok)
+                    
                     if tok.kind == 'ID':
-                        sym = None
-                        for s in self.labels:
-                            if s[0] == tok.value:
-                                sym = s
-
-                        if sym == None:
-                            exit('Could not find identifier: ' + tok.value)
-                        addr = int(sym[1]) & 0xfff
+                        label = self.find_label(tok)
+                        addr  = self.parse_number(label[1]) & 0xfff
+                        opcode = (0xA000 | addr).to_bytes(2, 'big')
                     elif tok.kind == 'NUMBER':
                         addr = self.parse_number(tok.value) & 0xfff
+                        opcode = (0xA000 | addr).to_bytes(2, 'big')
                     elif tok.kind == 'REGISTER':
                         reg_x  = int(tok.value) & 0xf
                         opcode = (0xF055 | (reg_x << 8)).to_bytes(2, 'big')
-                        self.binary.extend(opcode)
-                        continue
-                    else: self.excepted('ID, NUMBER, REGISTER', tok)
-
-                    opcode = (0xA000 | addr).to_bytes(2, 'big')
                     self.binary.extend(opcode)
-                else: self.excepted('REGISTER, REG_I', tok)
 
             elif tok.kind == 'DRAW':
                 tok = next(self.tokens)
-                if tok.kind != 'REGISTER':
-                    self.excepted('REGISTER', tok)
-                arg1 = int(tok.value)
+                self.expected(['REGISTER'], tok)
+                arg1 = self.parse_register(tok.value)
 
                 tok = next(self.tokens)
-                if tok.kind != 'REGISTER':
-                    self.excepted('REGISTER', tok)
-                arg2 = int(tok.value)
+                self.expected(['REGISTER'], tok)
+                arg2 = self.parse_register(tok.value)
 
                 tok = next(self.tokens)
-                if tok.kind != 'NUMBER' and tok.value > 0xf:
-                    self.excepted('NUMBER', tok)
+                self.expected(['NUMBER'], tok)
+                nibble = self.parse_number(tok.value)
+                if nibble > 0xf:
+                    self.expected(['NUMBER'], tok)
                 arg3 = self.parse_number(tok.value)
 
                 self.draw(arg1, arg2, arg3)
 
             elif tok.kind == 'ADD':
                 tok = next(self.tokens)
+                self.expected(['REGISTER', 'REG_I'], tok)
+
                 if tok.kind == 'REGISTER':
                     Vx = self.parse_number(tok.value)
 
                     tok = next(self.tokens)
+                    self.expected(['NUMBER', 'REGISTER'], tok)
+
                     if tok.kind == 'NUMBER':
                         byte = self.parse_number(tok.value)
                         opcode = 0x7000 | (Vx << 8) | (0x00ff & byte)
                     elif tok.kind == 'REGISTER':
                         Vy = self.parse_number(tok.value)
                         opcode = 0x8004 | (Vx << 8) | (Vy << 4)
-                    else: self.excepted('NUMBER, REGISTER', tok)
                 elif tok.kind == 'REG_I':
                     tok = next(self.tokens)
-                    if tok.kind != 'REGISTER':
-                        self.excepted('REGISTER', tok)
-                    Vx  = self.parse_number(tok.value) & 0xf
+                    self.expected(['REGISTER'], tok)
+
+                    Vx  = self.parse_register(tok.value) & 0xf
                     opcode = 0xF01E | (Vx << 8)
-                else: self.excepted('REGISTER, REG_I', tok)
 
                 self.binary.extend(opcode.to_bytes(2, 'big'))
 
@@ -230,68 +219,69 @@ class Parser:
             elif tok.kind == 'SE':
                 
                 tok = next(self.tokens)
-                if tok.kind != 'REGISTER':
-                    self.excepted('REGISTER', tok)
+                self.expected(['REGISTER'], tok)
                 Vx = self.parse_register(tok.value)
 
                 tok = next(self.tokens)
+                self.expected(['REGISTER', 'NUMBER'], tok)
+
                 if tok.kind == 'REGISTER':
                     Vy = self.parse_register(tok.value)
                     opcode = 0x5000 | (Vx << 8) |  ( Vy << 4)
                 elif tok.kind == 'NUMBER':
                     number = self.parse_number(tok.value)
                     opcode = 0x3000 | (Vx << 8) |  ( number & 0x00ff)
-                else: self.excepted('REGISTER, NUMBER', tok)
-                
                 self.binary.extend(opcode.to_bytes(2, 'big'))
-
             elif tok.kind == 'SNE':
+                
                 tok = next(self.tokens)
-                if tok.kind != 'REGISTER':
-                    self.excepted('REGISTER', tok)
+                self.expected(['REGISTER'], tok)
                 Vx = self.parse_register(tok.value)
 
                 tok = next(self.tokens)
+                self.expected(['REGISTER', 'NUMBER'], tok)
+
                 if tok.kind == 'REGISTER':
                     Vy = self.parse_register(tok.value)
                     opcode = 0x9000 | (Vx << 8) |  ( Vy << 4)
                 elif tok.kind == 'NUMBER':
                     number = self.parse_number(tok.value)
-                    opcode = 0x4000 | (Vx << 8) |  ( number & 0x00ff)
-                else: self.excepted('REGISTER, NUMBER', tok)
+                    opcode = 0x4000 | (Vx << 8) |  ( number & 0x00ff)                
                 
                 self.binary.extend(opcode.to_bytes(2, 'big'))
 
-            elif tok.kind == 'RAND':
-                # Cxkk - RND Vx, byte
+            elif tok.kind == 'SKP':
                 tok = next(self.tokens)
-                if tok.kind != 'REGISTER':
-                    self.excepted('REGISTER', tok)
+                self.expected(['NUMBER'], tok)
+                key = self.parse_number(tok.value) & 0xf
+                opcode = (0xE09E | (key << 8))
+                self.binary.extend(opcode.to_bytes(2, 'big'))
+            elif tok.kind == 'SKNP':
+                tok = next(self.tokens)
+                self.expected(['NUMBER'], tok)
+                key = self.parse_number(tok.value) & 0xf
+                opcode = (0xE0A1 | (key << 8))
+                self.binary.extend(opcode.to_bytes(2, 'big'))
+            
+            elif tok.kind == 'RAND':
+
+                tok = next(self.tokens)
+                self.expected(['REGISTER'], tok)
                 Vx = self.parse_number(tok.value)
 
                 tok = next(self.tokens)
-                if tok.kind != 'NUMBER':
-                    self.excepted('NUMBER', tok)
+                self.expected(['NUMBER'], tok)
                 byte = self.parse_number(tok.value)
 
                 self.binary.extend((0xC000 | (Vx  << 8) | (0x00ff & byte)).to_bytes(2, 'big'))
 
             elif tok.kind == 'CALL':
                 tok = next(self.tokens)
-                if tok.kind not in ['ID']:
-                    exit('excepted id but got type of ' + tok.kind)
-                
-                if tok.value not in [symbol[0] for symbol in self.labels]:
-                    exit('could not find symbol ' + tok.value + ' in labels')
-                
-                addr = None
-                for sym in self.labels:
-                    if sym[0] == tok.value:
-                        addr = sym[1]
-                if addr == None:
-                    exit('could not find symbol')
-                self.call(addr)
+                self.expected(['ID'], tok)
 
+                label = self.find_label(tok)
+                addr  = self.parse_number(label[1]) & 0xfff
+                self.call(addr)
             elif tok.kind == 'RET':
                 self.binary.extend(0x00EE.to_bytes(2, 'big'))
 
@@ -300,63 +290,82 @@ class Parser:
 
             else: exit(f'Could not parse {tok.kind}: {tok.value} at line:{tok.loc["lineno"]}')
 
-        if tok.kind != 'EOF':
-            self.excepted('EOF', tok)
-
+        self.expected(['EOF'], tok)
         return self.binary
 
-    def resolve_labels(self, tokens: list) -> list:
-        pc = 0x200
-        index  = 0
+    def peek(self):
+        return self.tokens[ self.tokidx + 1 ]        
+    def eat(self):
+        self.tokidx += 1
+        return self.tokens[ self.tokidx ]
 
-        while index < len(tokens):
-            tok = tokens[index]
+    def tobinarray(self, opcode: int) -> bytearray:
+        _bytes = opcode.to_bytes(2, 'big')
+        return _bytes
+    def addbinary(self, opcode: int) -> None:
+        self.binary.extend(self.tobinarray(opcode))
+
+    def resolve_labels(self, tokens: list) -> list:
+        tokens_iter = iter(tokens)
+        pc = 0x200
+        for tok in tokens_iter:
             if tok.kind == 'LABEL':
                 if tok.value in [l[0] for l in self.labels]:
-                    exit(f'LABEL already defined in: {self.find_label(tok.value)}')
+                    raise SyntaxError(f'Label already defined at {self.find_label(tok.value)}')
                 self.labels.append((tok.value, int(pc) & 0xfff))
             # instruction line
             elif tok.kind.upper() in [keyword.upper() for keyword in Tokenizer.keywords]:
                 pc += 2
             elif tok.kind == 'DIRECTIVE':
                 if tok.value == 'ascii':
-                    index += 1
-                    tok = tokens[index]
-                    if tok.kind != 'STRING':
-                        self.excepted(f'STRING', tok)
+                    tok = next(tokens_iter)
+                    self.expected(['STRING'], tok)
                     pc += len(tok.value) - 2  # remove quotation ""
                 
                 elif tok.value == 'org':
-                    index += 1
-                    tok = tokens[index]
-                    if tok.kind != 'NUMBER':
-                        self.excepted('NUMBER', tok)
+                    tok = next(tokens_iter)
+                    self.expected(['NUMBER'], tok)
                     pc = self.parse_number(tok.value)
                 
                 elif tok.value == 'font':
-                    index += 1
-                    tok = tokens[index]
-
+                    tok = next(tokens_iter)
                     if tok.value in [l[0] for l in self.labels]:
                         exit(f'LABEL already defined in: {self.find_label(tok.value)}')
-
                     self.labels.append((tok.value, int(pc) & 0xfff))
-                    pc += 5
-                else:
-                    exit(f'Unexpected {tok}')
-            index += 1
-    def find_label(self, name):
-        for sym in self.labels:
-            if sym[0] == name:
-                return sym
-        exit('unreachable')
+                    while True:
+                        if (tok.kind == 'ID') and (tok.value == 'endfont'):
+                            break
+                        pc += 1
+                        tok = next(tokens_iter)
+                    # fix this
+                    pc -= 1
+                    self.expected(['ID'], tok)
+
+                elif tok.value == 'var':
+                    tok = next(tokens_iter)
+                    self.expected(['ID'], tok)
+                    identifier = tok.value
+
+                    tok = next(tokens_iter)
+                    self.expected(['NUMBER'], tok)
+                    value = self.parse_number(tok.value)
+
+                    self.labels.append((identifier, int(pc) & 0xfff))
+                    pc += 2
+    
+    def find_label(self, tok):
+        for label in self.labels:
+            if label[0] == tok.value:
+                return label
+        raise Undefined(f"`{tok.value}` at line ???")
     
     def parse_number(self, value: str) -> int:
-        if value[0:2] == '0x':
+        if str(value)[0:2] == '0x':
             return int(value, 16)
         return int(value)
     def parse_register(self, value: str) -> int:
-        return int(value) & 0xf
+        if int(value, 16) > 0xf: exit('error parsing register')
+        return int(value, 16) & 0xf
     
     def call(self, addr):
         opcode = (0x2000 | (addr & 0x0FFF)).to_bytes(2, 'big')
@@ -368,12 +377,13 @@ class Parser:
         opcode = (0xD000 | (x << 8) | (y << 4) | (nibble & 0x000f)).to_bytes(2, 'big')
         self.binary.extend(opcode)
 
+    def expected(self, tokens, tok):
+        if tok.kind not in tokens:
+            raise SyntaxError(f"Expected {tokens} but got {tok.kind} at line: {tok.loc['lineno']}")
+        return True
 
-
-    def excepted(self, excepted: str, got: Token):
-        raise Exception(f"Expected token {excepted} but got {got.kind} at line: { got.loc['lineno'] }")
     def unknown(self, tok: Token):
-        raise Exception(f"Unkown {tok.kind}: `{tok.value}` at line:{ tok.loc['lineno'] }")
+        raise Undefined(f"{tok.kind}: `{tok.value}` at line:{ tok.loc['lineno'] }")
 
 
 args = sys.argv[1:]
@@ -385,10 +395,10 @@ with open(f'./{filename}.asm', 'r') as sourcecode:
     code = sourcecode.read()
 
 tokenizer = Tokenizer()
-tokenizer.tokenize(code)
+tokens = tokenizer.tokenize(code)
 
 parser = Parser()
-parser.parse(tokenizer.tokens)
+parser.parse(tokens)
 
 with open(f'./{filename}.o', 'wb') as fp:
     fp.write(parser.binary)

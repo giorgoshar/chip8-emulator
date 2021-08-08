@@ -16,7 +16,10 @@ font   = pygame.font.SysFont("monospace", 16)
 
 emulator_screen  = pygame.Surface((800, 600))
 memory_screen    = pygame.Surface((400, 600))
-registers_screen = pygame.Surface((400, 600))
+registers_screen = pygame.Surface((400, 200))
+keyboard_screen  = pygame.Surface((400, 200))
+
+DEBUG = False
 
 class Chip8:
     def __init__(self):
@@ -65,51 +68,91 @@ class Chip8:
         self.keyboard.reset()
 
     def run(self):
-        clock   = pygame.time.Clock()
-        running = True
-        scroll_y = 0x200
+        clock    = pygame.time.Clock()
+        running  = True
+        mem_scroll_y = 0x200
         while running:
             # clock.tick(1000 / 60)
             screen.fill((0, 0, 0))
             emulator_screen.fill((0, 0, 0))
-            memory_screen.fill((0, 0, 0))
+            memory_screen.fill((64, 64, 64))
+            registers_screen.fill((128, 128, 128))
+            keyboard_screen.fill((78, 78, 78))
+            
+            # keyboard events
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit()
+                self.keyboard.handle(event)
+                
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_n and DEBUG:
+                        self.cpu.opcode = (self.memory.read(self.cpu.pc) << 8) | self.memory.read(self.cpu.pc + 1)
+                        self.execute(self.cpu.opcode)
 
-            self.keyboard.handle()
-            self.cpu.opcode = (self.memory.read(self.cpu.pc) << 8) | self.memory.read(self.cpu.pc + 1)
-            self.execute(self.cpu.opcode)
+            if not DEBUG:
+                self.cpu.opcode = (self.memory.read(self.cpu.pc) << 8) | self.memory.read(self.cpu.pc + 1)
+                self.execute(self.cpu.opcode)
 
             if self.cpu.timer['delay'] > 0: 
                 self.cpu.timer['delay'] -= 1
             if self.cpu.timer['sound'] > 0: 
                 self.cpu.timer['sound'] -= 1
 
+            # draw memory window
             j = 0
-            for i in range(scroll_y, len(self.memory.buffer), 2):
-                text = font.render(f'0x{i:<4x} | 0x{self.memory.buffer[i]:x} 0x{self.memory.buffer[i + 1]:x}', True, (255, 255, 255))
+            for i in range(mem_scroll_y, len(self.memory.buffer), 2):
+                color = (255, 0, 0) if i == self.cpu.pc else (255, 255, 255)
+                text  = font.render(f'0x{i:<4x} | 0x{self.memory.buffer[i]:x} 0x{self.memory.buffer[i + 1]:x}', True, color)
                 memory_screen.blit(text, (0, j))
                 j += 16
-
             pressed_key = pygame.key.get_pressed()
             if pressed_key[pygame.K_UP]:
-                scroll_y += 2
-                if scroll_y >= len(self.memory.buffer):
-                    scroll_y = len(self.memory.buffer) - 60
+                mem_scroll_y += 2
+                if mem_scroll_y >= len(self.memory.buffer):
+                    mem_scroll_y = len(self.memory.buffer) - 60
             elif pressed_key[pygame.K_DOWN]:
-                scroll_y -= 2
-                if scroll_y < 0:
-                    scroll_y = 0
+                mem_scroll_y -= 2
+                if mem_scroll_y < 0:
+                    mem_scroll_y = 0
 
-            scale = 5
-            for row in range(0, len(self.video.buffer)):
-                for col in range(0, len(self.video.buffer[row])):
-                    color = 0x000000
-                    if self.video.buffer[row][col] != 0:
-                        color = 0xffffff
-                    pygame.draw.rect(emulator_screen, color , (col * scale, row * scale, scale, scale))
+            # draw registers window
+            j = 0
+            k = 0
+            for reg in range(0, len(self.cpu.v)):
+                text = font.render(f'V{reg}:0x{self.cpu.v[reg]:x} ', True, (255, 255, 255))
+                registers_screen.blit(text, (k, j))
+                j += 16
+                if j >= (16 * 8):
+                    j = 0
+                    k += 80
 
-            # self.video.render()
+            text = font.render(f'I :{hex(self.cpu.i)}', True, (255, 255, 255))
+            registers_screen.blit(text, (160, 0))
+            
+            text = font.render(f'PC:{hex(self.cpu.pc)}', True, (255, 255, 255))
+            registers_screen.blit(text, (160, 16))
+
+            text = font.render(f'SP:{hex(self.cpu.sp)}', True, (255, 255, 255))
+            registers_screen.blit(text, (160, 32))
+
+            j = 0
+            k = 0
+            for key in range(0, len(self.keyboard.keypad)):
+                text = font.render(f'key_{key}:{self.keyboard.keypad[key]}', True, (255, 255, 255))
+                keyboard_screen.blit(text, (k, j))
+                j += 16
+                if j >= (16 * 8):
+                    j = 0
+                    k += 80
+            
+            # render everything to screen
+            self.video.render()
             screen.blit(emulator_screen, (0, 0))
             screen.blit(memory_screen, (800, 0))
+            screen.blit(registers_screen, (0, 600))
+            screen.blit(keyboard_screen, (400, 600))
+
             pygame.display.flip()
 
     def execute(self, opcode):
@@ -296,6 +339,7 @@ class Chip8:
     # -- END  Subroutine Operations
 
 chip8 = Chip8()
+
 # romname = "./ROMS/KALEID"
 # romname = "./ROMS/PUZZLE"
 # romname = "./ROMS/test_opcode.ch8"
