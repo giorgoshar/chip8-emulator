@@ -3,7 +3,7 @@ import sys
 
 class Keyboard:
     def __init__(self):
-        self.bindKeys = {
+        self.keys = {
             pygame.K_0: 0x0,
             pygame.K_1: 0x1,
             pygame.K_2: 0x2,
@@ -21,19 +21,31 @@ class Keyboard:
             pygame.K_e: 0xe,
             pygame.K_f: 0xf,
         }
-        self.keypad = [0] * len(self.bindKeys)
+        self.keypad = [0] * len(self.keys)
 
-    def handle(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key in self.bindKeys:
-                self.keypad[ self.bindKeys[event.key] ] = 0x1
-        
-        elif event.type == pygame.KEYUP:
-            if event.key in self.bindKeys:
-                self.keypad[ self.bindKeys[event.key] ] = 0x0  
+    def handle(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key in self.keys:
+                    self.keypad[ self.keys[event.key] ] = 0x1
+            
+            elif event.type == pygame.KEYUP:
+                if event.key in self.keys:
+                    self.keypad[ self.keys[event.key] ] = 0x0  
 
     def reset(self):
-        self.keypad = [0] * len(self.bindKeys)
+        self.keypad = [0] * len(self.keys)
 
     def isKeyPressed(self, key):
         return self.keypad[key] == 1
+    
+    def fire(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key in self.keys:
+                self.keypad[ self.keys[event.key] ] = 0x1
+        elif event.type == pygame.KEYUP:
+            if event.key in self.keys:
+                self.keypad[ self.keys[event.key] ] = 0x0  

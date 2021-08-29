@@ -39,7 +39,7 @@ class Memory:
                     break
                 string += f' {self.buffer[addr + i]:<02x}'
             string += '\n'
-        return string
+        print(string)
 
     def __repr__(self):
         return self.dump(0, self.size, 10)

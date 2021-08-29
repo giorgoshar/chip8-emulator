@@ -1,9 +1,7 @@
 .org 0x200
 jmp main
-.var A 0x1
 main:
     jmp keyboard
-
 keyboard:
     load v3, 1 ; x position
     load v4, 1 ; y position
