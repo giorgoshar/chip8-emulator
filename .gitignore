@@ -1,1 +1,4 @@
 test.py
+*.o
+*.ext
+roms/

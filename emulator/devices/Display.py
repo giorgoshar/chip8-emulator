@@ -11,10 +11,9 @@ class Display:
         self.screen = surface
 
         self.toRender = False
-    
-    def render(self, screen = None):
 
-        surface =  self.screen if screen is None else screen
+    def render(self, screen = None):
+        surface = self.screen if screen is None else screen
         for row in range(0, len(self.buffer)):
             for col in range(0, len(self.buffer[row])):
                 color = 0x1e1e1e

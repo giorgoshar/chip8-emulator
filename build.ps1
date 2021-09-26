@@ -7,7 +7,6 @@ $filename = $args[0]
 #     Write-Host "usage: build.ps1 <script>"
 #     exit
 # }
-
 $filename = "test.asm"
 
 $output = (Get-Item $filename).Basename + ".o"
@@ -16,6 +15,7 @@ $assembler = @("./asm/asm.py", "$filename")
 $emulator  = @("./emulator/chip8.py", $output)
 $disasm    = @("./disasm/disasm.py", $output)
 
+del $output
 $all = @($assembler, $emulator)
 
 foreach ($build in $all) {

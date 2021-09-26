@@ -3,25 +3,21 @@ import os.path
 import pygame
 import random
 
-from devices.CPU      import CPU
-from devices.Memory   import Memory
-from devices.Display  import Display
-from devices.Keyboard import Keyboard
-
-# os.environ['SDL_VIDEODRIVER'] = 'windib'
+from devices import *
 pygame.init()
-screen = pygame.display.set_mode([1200, 900], pygame.HWSURFACE |pygame.DOUBLEBUF)
+
+screen = pygame.display.set_mode([900, 600], pygame.HWSURFACE |pygame.DOUBLEBUF)
 font   = pygame.font.SysFont("monospace", 14)
 
 class Chip8:
     def __init__(self):
 
-        self.memory   = Memory(0x1000)
-        self.cpu      = CPU()
-        self.video    = Display(screen)
+        self.memory= Memory(0x1000)
+        self.cpu   = CPU()
+        self.video = Display(screen)
         self.keyboard = Keyboard()
 
-        self.fontset = [
+        self.fontset: list[bytes] = [
             0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
             0x20, 0x60, 0x20, 0x20, 0x70, # 1
             0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
@@ -40,7 +36,7 @@ class Chip8:
             0xF0, 0x80, 0xF0, 0x80, 0x80  # F
         ]
 
-        self.toRender = False
+        self.toRender: bool = False
 
     def load(self, filename):
         self.reset()
@@ -86,59 +82,59 @@ class Chip8:
 
     def execute(self, opcode):
 
-        operation = (opcode & 0xf000) >> 12
-        x    = (opcode & 0x0f00) >> 8
-        y    = (opcode & 0x00f0) >> 4
-        n    =  opcode & 0x000f
-        kk   =  opcode & 0x00ff
-        nnn  =  opcode & 0x0fff
+        ins = (opcode & 0xf000) >> 12
+        x   = (opcode & 0x0f00) >> 8
+        y   = (opcode & 0x00f0) >> 4
+        n   =  opcode & 0x000f
+        kk  =  opcode & 0x00ff
+        nnn =  opcode & 0x0fff
 
         self.cpu.pc += 2
 
         # ==[ main operations ]==
-        if   operation == 0x0 and (opcode & 0xff) == 0xe0: self.CLS()
-        elif operation == 0x0 and (opcode & 0xff) == 0xee: self.RET()
-        elif operation == 0x1: self.JP(nnn)
-        elif operation == 0x2: self.CALL(nnn)
-        elif operation == 0x3: self.SE_Vx_kk(x, kk)
-        elif operation == 0x4: self.SNE_Vx_kk(x, kk)
-        elif operation == 0x5: self.SE_Vx_Vy(x, y)
-        elif operation == 0x6: self.LD_VX(x, kk)
-        elif operation == 0x7: self.ADD_VX(x, kk)
-        elif operation == 0x9: self.SNE_Vx_Vy(x, y)
-        elif operation == 0xa: self.LD_I(nnn)
-        elif operation == 0xc: self.RND(x, kk)
-        elif operation == 0xd: self.DRAW(x, y, n)
+        if   ins == 0x0 and (opcode & 0xff) == 0xe0: self.CLS()
+        elif ins == 0x0 and (opcode & 0xff) == 0xee: self.RET()
+        elif ins == 0x1: self.JP(nnn)
+        elif ins == 0x2: self.CALL(nnn)
+        elif ins == 0x3: self.SE_Vx_kk(x, kk)
+        elif ins == 0x4: self.SNE_Vx_kk(x, kk)
+        elif ins == 0x5: self.SE_Vx_Vy(x, y)
+        elif ins == 0x6: self.LD_VX(x, kk)
+        elif ins == 0x7: self.ADD_VX(x, kk)
+        elif ins == 0x9: self.SNE_Vx_Vy(x, y)
+        elif ins == 0xa: self.LD_I(nnn)
+        elif ins == 0xc: self.RND(x, kk)
+        elif ins == 0xd: self.DRAW(x, y, n)
 
         # ==[ input operations ]==
-        elif operation == 0xe and (opcode & 0xff) == 0x9e: self.skp_pressed(x)
-        elif operation == 0xe and (opcode & 0xff) == 0xa1: self.skp_not_pressed(x)
+        elif ins == 0xe and (opcode & 0xff) == 0x9e: self.skp_pressed(x)
+        elif ins == 0xe and (opcode & 0xff) == 0xa1: self.skp_not_pressed(x)
 
         # ==[ logical operations ]==
-        elif operation == 0x8 and (opcode & 0xf) == 0x0: self.lo_ld(x, y)
-        elif operation == 0x8 and (opcode & 0xf) == 0x1: self.lo_or(x, y)
-        elif operation == 0x8 and (opcode & 0xf) == 0x2: self.lo_and(x, y)
-        elif operation == 0x8 and (opcode & 0xf) == 0x3: self.lo_xor(x, y)
-        elif operation == 0x8 and (opcode & 0xf) == 0x4: self.lo_add(x, y)
-        elif operation == 0x8 and (opcode & 0xf) == 0x5: self.lo_sub(x, y)
-        elif operation == 0x8 and (opcode & 0xf) == 0x6: self.lo_shr(x, y)
-        elif operation == 0x8 and (opcode & 0xf) == 0x7: self.lo_subn(x, y)
-        elif operation == 0x8 and (opcode & 0xf) == 0xe: self.lo_shl(x, y)
+        elif ins == 0x8 and (opcode & 0xf) == 0x0: self.lo_ld(x, y)
+        elif ins == 0x8 and (opcode & 0xf) == 0x1: self.lo_or(x, y)
+        elif ins == 0x8 and (opcode & 0xf) == 0x2: self.lo_and(x, y)
+        elif ins == 0x8 and (opcode & 0xf) == 0x3: self.lo_xor(x, y)
+        elif ins == 0x8 and (opcode & 0xf) == 0x4: self.lo_add(x, y)
+        elif ins == 0x8 and (opcode & 0xf) == 0x5: self.lo_sub(x, y)
+        elif ins == 0x8 and (opcode & 0xf) == 0x6: self.lo_shr(x, y)
+        elif ins == 0x8 and (opcode & 0xf) == 0x7: self.lo_subn(x, y)
+        elif ins == 0x8 and (opcode & 0xf) == 0xe: self.lo_shl(x, y)
 
         # ==[ subroutine operations ]==
-        elif operation == 0xf and (opcode & 0xff) == 0x07: self.fx07(x)
-        elif operation == 0xf and (opcode & 0xff) == 0x0a: self.fx0a(x)
-        elif operation == 0xf and (opcode & 0xff) == 0x55: self.fx55(x)
-        elif operation == 0xf and (opcode & 0xff) == 0x1e: self.fx1e(x)
-        elif operation == 0xf and (opcode & 0xff) == 0x15: self.fx15(x)
-        elif operation == 0xf and (opcode & 0xff) == 0x18: self.fx18(x)
-        elif operation == 0xf and (opcode & 0xff) == 0x65: self.fx65(x)
-        elif operation == 0xf and (opcode & 0xff) == 0x29: self.fx29(x)
-        elif operation == 0xf and (opcode & 0xff) == 0x33: self.fx33(x)
+        elif ins == 0xf and (opcode & 0xff) == 0x07: self.fx07(x)
+        elif ins == 0xf and (opcode & 0xff) == 0x0a: self.fx0a(x)
+        elif ins == 0xf and (opcode & 0xff) == 0x55: self.fx55(x)
+        elif ins == 0xf and (opcode & 0xff) == 0x1e: self.fx1e(x)
+        elif ins == 0xf and (opcode & 0xff) == 0x15: self.fx15(x)
+        elif ins == 0xf and (opcode & 0xff) == 0x18: self.fx18(x)
+        elif ins == 0xf and (opcode & 0xff) == 0x65: self.fx65(x)
+        elif ins == 0xf and (opcode & 0xff) == 0x29: self.fx29(x)
+        elif ins == 0xf and (opcode & 0xff) == 0x33: self.fx33(x)
         
         # Super Chip-48 Instructions
-        elif operation == 0xf and (opcode & 0xff) == 0x75: sys.exit('super chip8 not implemented')
-        elif operation == 0xf and (opcode & 0xff) == 0x85: sys.exit('super chip8 not implemented')
+        elif ins == 0xf and (opcode & 0xff) == 0x75: sys.exit('super chip8 not implemented')
+        elif ins == 0xf and (opcode & 0xff) == 0x85: sys.exit('super chip8 not implemented')
         else: exit(f'Failed to execute opcode: {hex(opcode)} (addr: 0x{self.cpu.pc:x})')
 
     # -- BEGIN MAIN OPERATIONS
@@ -233,7 +229,7 @@ class Chip8:
         self.cpu.v[x] = (self.cpu.v[y] - self.cpu.v[x]) & 0xff
     def lo_shl(self, x, y):
         self.cpu.v[0xF] = self.cpu.v[x] >> 7
-        self.cpu.v[x] = (self.cpu.v[x] << 1) & 0xff
+        self.cpu.v[x]   = (self.cpu.v[x] << 1) & 0xff
     # -- END Logical Operations    
  
     # -- BEGIN Subroutine Operations
@@ -301,13 +297,12 @@ class Emulator:
     def run(self, romname):
         self.chip8.load(romname)
         clock = pygame.time.Clock()
-
         while self.isRunning:
+            clock.tick(60)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.isRunning = False
                 if event.type == pygame.KEYDOWN:
-                    
                     if   event.key == pygame.K_F1: self.state = 1
                     elif event.key == pygame.K_F2: self.state = 2
 
@@ -319,11 +314,11 @@ class Emulator:
             # switch states
             if self.state == 1:
                 self.chip8.tick()
-            
+
             if self.chip8.toRender == True:
                 self.chip8.video.render(self.screen)
                 self.chip8.toRender = False
-            
+
             self.updateMemoryWindow()
             self.updateRegistersWindow()
             self.updateKeyboardWindow()
@@ -337,9 +332,7 @@ class Emulator:
         self.memoryWindowView.fill((0, 0, 0))
         y = 0
         
-        if self.chip8.cpu.pc in range(self.beginMemView + 5, self.endMemView - 5):
-            pass
-        else:
+        if self.chip8.cpu.pc not in range(self.beginMemView + 5, self.endMemView - 5):
             self.beginMemView = self.chip8.cpu.pc - 20
             self.endMemView   = self.chip8.cpu.pc + 20
  
@@ -426,6 +419,7 @@ if len(sys.argv) == 2:
     else:
         sys.exit(f'[__ERROR__] file {sys.argv[1]} doesnt exist')
 emu = Emulator(screen)
+emu.state = 1
 emu.run(romname)
 
 # chip8.load(romname)

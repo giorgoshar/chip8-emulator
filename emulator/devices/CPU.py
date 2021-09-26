@@ -1,23 +1,17 @@
 class CPU:
     def __init__(self):
-        self.v  = [0] * 16
-        self.i  = 0
-        self.sp = 0
-        self.pc = 0x200
+        self.v: list[int] = [0] * 16
+        self.i: int = 0
+        self.sp:int = 0
+        self.pc:int = 0x200
 
-        self.timer  = {'delay': 0,'sound': 0}
-        self.stack  = [0] * 16
-        self.cycle  = 0
-        self.opcode = 0x0
+        self.stack:  int = [0] * 16
+        self.cycle:  int = 0
+        self.opcode: int = 0x0
 
-    def reset(self):
-        self.v  = [0] * 16
-        self.i  = 0
-        self.sp = 0
-        self.pc = 0x200
-        self.timer = {'delay': 0, 'sound': 0}
-        self.stack = [0] * 16
-        self.cycle = 0
+        self.timer:  dict[str, str]  = {'delay': 0,'sound': 0}
+
+    def reset(self): self = CPU()
 
     def dump(self):
         print(

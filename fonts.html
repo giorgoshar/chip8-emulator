@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chip8 Font Maker</title>
+    <style>
+        #GridFont {
+            display: grid;
+            grid-gap: 5px;
+            grid-template-columns: repeat(5, 70px);
+            grid-template-rows: repeat(5, 70px);
+            grid-auto-flow: row;
+        }
+    </style>
+</head>
+<body>
+    
+    <div id='GridFont'></div>
+    <button id="GetHex">Get Hex</button>
+    <input type="text" id="HexValue" disabled>
+
+    <script type="text/javascript">
+
+        const BOX_WIDTH  = 16;
+        const BOX_HEIGHT = 16;
+
+        const FONT_WIDTH  = 5;
+        const FONT_HEIGHT = 5;
+
+        function CreateBox(width, height) {
+            const BoxElement = document.createElement("div")
+            BoxElement.style.width  = "100%";
+            BoxElement.style.height = "100%";
+            BoxElement.style.backgroundColor = '#000'
+            BoxElement.dataset.enabled = 0;
+            BoxElement.onclick = (ev) => {
+                BoxElement.dataset.enabled ^= 1;
+                BoxElement.style.backgroundColor = BoxElement.dataset.enabled == 0 ? "#000" : '#fff';
+            }
+            return BoxElement;
+        }
+
+        function GetGrid(GridElement) {
+            console.log(GridElement)
+
+            const HexOutputElement = document.getElementById("HexValue");
+
+            let bin  = '';
+            let font = [];
+            for(let c=0;c < GridElement.childNodes.length;c++) {
+                const row    = parseInt(c / FONT_WIDTH);
+                const column = c % FONT_WIDTH;
+                let BoxElement = GridElement.childNodes[c];
+                bin += BoxElement.dataset.enabled;
+                if(column == FONT_WIDTH - 1) {
+                    while(bin.length < 8) {
+                        bin += 0;
+                    }
+                    let hex = '0x' + parseInt(bin, 2).toString(16).toUpperCase();
+                    HexOutputElement.value += hex + ' '
+                    bin = '';
+                }
+            }
+        }
+
+        window.onload = function() {
+            console.log('loaded!')
+            const GridElement  = document.getElementById("GridFont");
+            const GetHexButton = document.getElementById("GetHex");
+            
+            for(let i =0;i<FONT_WIDTH * FONT_HEIGHT;i++){
+                GridElement.appendChild(CreateBox(BOX_WIDTH, BOX_HEIGHT));
+            }
+
+            GetHexButton.onclick = (ev) => {
+                GetGrid(GridElement);
+            }
+
+        }
+    </script>
+</body>
+</html>

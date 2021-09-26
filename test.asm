@@ -1,80 +1,33 @@
 .org 0x200
 jmp main
-.var x 1
-.var y 1
-.var speed 1
+.ascii "Hello World"
+.byte x 0
+.byte y 0
+.byte n 0
 main:
-    load v4, 1
-    load v5, 1
-
-    again:
-        sknp 0x0 ;W
-        call PERSON_MOVE_UP
-
-        sknp 0x1 ;S
-        call PERSON_MOVE_DOWN
-
-        sknp 0xd ;D
-        call PERSON_MOVE_RIGHT
-
-        sknp 0xa ;A
-        call PERSON_MOVE_LEFT
-        
-        sknp 0xf ;F
-        call SPAWN_BOX
-
+    load v4, 0
+    load v5, 0
+    loop:
         cls
-        call DRAW_BOXES
-        call DRAW_PERSON
-        jmp again
-
+        call load8
+        load v1, v6
+        call draw_number
+        jmp loop
     jmp inf
 inf: jmp inf
 
-DRAW_PERSON:
-    load [I], person
-    draw v4, v5, 8
-    ret
-
-SPAWN_BOX:
-    ret
-
-DRAW_BOXES:
-    ret
-
-PERSON_MOVE_DOWN:
-    load [I] y
-    load v1, [I]
-    add  v1, 1
+load8:
+    load [I], x
     load [I], v1
-    load v5, v1
+    load [I], 0
     ret
 
-PERSON_MOVE_UP:
-    load [I] y
-    load v1, [I]
-    load v7, 1
-    sub  v1, v7
-    load [I], v1
-    load v5, v1
+draw_number:
+    call print
     ret
-
-PERSON_MOVE_RIGHT:
-    load [I] x
-    load v1, [I]
-    add  v1, 1
-    load [I], v1
-    load v4, v1
-    ret
-
-PERSON_MOVE_LEFT:
-    load [I] x
-    load v1, [I]
-    load v7, 1
-    sub  v1, v7
-    load [I], v1
-    load v4, v1
-    ret
+print:
+   draw v4, v5, 5
+   ret 
 
 .font letter_A 0x1c 0x22 0x3e 0x22 0x22, endfont
 .font letter_E 0x7c 0x40 0x7c 0x40 0x7c, endfont
@@ -82,8 +35,6 @@ PERSON_MOVE_LEFT:
 .font letter_D 0x78 0x44 0x44 0x44 0x78, endfont
 .font letter_O 0x7c 0x44 0x44 0x44 0x7c, endfont
 .font letter_N 0x44 0x64 0x54 0x4c 0x44, endfont
-.font square   0xfc 0xfc 0xfc 0xfc 0xfc, endfont
-.font person   0x70 0x70 0x20 0x70 0xA8 0x20 0x50 0x50, endfont
 
 err:
     cls

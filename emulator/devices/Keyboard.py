@@ -3,7 +3,7 @@ import sys
 
 class Keyboard:
     def __init__(self):
-        self.keys = {
+        self.keys: dict[int] = {
             pygame.K_0: 0x0,
             pygame.K_1: 0x1,
             pygame.K_2: 0x2,
@@ -21,7 +21,7 @@ class Keyboard:
             pygame.K_e: 0xe,
             pygame.K_f: 0xf,
         }
-        self.keypad = [0] * len(self.keys)
+        self.keypad: list[int] = [0] * len(self.keys)
 
     def handle(self):
         for event in pygame.event.get():
@@ -39,7 +39,7 @@ class Keyboard:
     def reset(self):
         self.keypad = [0] * len(self.keys)
 
-    def isKeyPressed(self, key):
+    def isKeyPressed(self, key: int) -> bool:
         return self.keypad[key] == 1
     
     def fire(self, event):

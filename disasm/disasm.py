@@ -1,21 +1,6 @@
 import os
 import sys
 
-instrSet = {
-    'jump': {
-        'disasm'  : lambda addr: f"JP {addr:x}",
-        'assemble': lambda addr: 0x1000 | (addr & 0x0FFF)
-    },
-    'ret': {
-        'disasm'  : lambda: f"RET",
-        'assemble': lambda: 0x00EE
-    },
-    'call': {
-        'disasm'  : lambda addr: f"CALL {addr:x}",
-        'assemble': lambda addr: 0x2000 | (addr & 0x0FFF)
-    }
-}
-
 def disasm(opcode):
     ins = (opcode & 0xf000) >> 12
     x   = (opcode & 0x0f00) >> 8
@@ -63,7 +48,7 @@ def disasm(opcode):
     elif ins == 0xf and (opcode & 0xff) == 0x65: dissasmStr = f'LD   V{x:x}, [I]'
     elif ins == 0xf and (opcode & 0xff) == 0x29: dissasmStr = f'LD   F,  V{x:x}'
     elif ins == 0xf and (opcode & 0xff) == 0x33: dissasmStr = f'LD   B,  V{x:x}'
-    else: dissasmStr = f'unknown opcode'
+    else: dissasmStr = f'unknown opcode 0x{opcode:x}'
     return dissasmStr
 
 if __name__ == '__main__':
@@ -75,6 +60,7 @@ if __name__ == '__main__':
     pc = 0x0
     while pc < len(rom):
         opcode = (rom[pc] << 8) | rom[pc + 1]
+        # print('------------->', rom[pc], rom[pc + 1])
         instr = disasm(opcode)
-        print(pc + 0x200, opcode, instr)
+        print(hex(pc + 0x200), hex(opcode), instr)
         pc += 2
