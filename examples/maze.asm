@@ -2,8 +2,8 @@
 jmp main
 .ascii  "Simple MAZE implementation"
 main:
-    load v0, 0        ; x position
-    load v1, 0        ; y position
+    load v0, 0 ; x position
+    load v1, 0 ; y position
 loop:
     load [I], LEFT    
     rand v2, 1
@@ -20,15 +20,6 @@ loop:
     jmp  loop
 end:
     jmp end
-.font RIGHT
-    "*       "
-    " *      "
-    "  *     "
-    "   *    "
-    "        "
-.font LEFT
-    "   *    "
-    "  *     "
-    " *      "
-    "*       "
-    "        "
+
+.font RIGHT 0x80 0x40 0x20 0x10 0x0, endfont
+.font LEFT  0x10 0x20 0x40 0x80 0x0, endfont

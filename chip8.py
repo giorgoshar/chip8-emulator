@@ -3,7 +3,7 @@ import os.path
 import pygame
 import random
 
-from devices import *
+from emulator import *
 pygame.init()
 
 screen = pygame.display.set_mode([900, 600], pygame.HWSURFACE |pygame.DOUBLEBUF)
@@ -12,9 +12,9 @@ font   = pygame.font.SysFont("monospace", 14)
 class Chip8:
     def __init__(self):
 
-        self.memory= Memory(0x1000)
-        self.cpu   = CPU()
-        self.video = Display(screen)
+        self.memory = Memory(0x1000)
+        self.cpu    = CPU()
+        self.video  = Display(screen)
         self.keyboard = Keyboard()
 
         self.fontset: list[bytes] = [

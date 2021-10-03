@@ -5,7 +5,7 @@ jmp main
 .byte y 0
 .byte n 0
 main:
-    load v4, 0
+    load vf, 0
     load v5, 0
     loop:
         cls

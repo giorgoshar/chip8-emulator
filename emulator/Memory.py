@@ -6,12 +6,12 @@ class Memory:
         self.size   = size - 1
 
     def read(self, addr: int) -> int:
-        assert 0 <= addr <= self.size
+        assert 0 <= addr < self.size
         return self.buffer[addr]
 
     def write(self, addr: int, value: int) -> None:
         assert isinstance(value, int)
-        assert 0 <= value <= 0xff
+        assert 0 <= value < self.size
         self.buffer[ addr ] = value & 0xff
     
     def clear(self) -> None:
