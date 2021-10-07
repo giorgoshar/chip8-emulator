@@ -7,27 +7,17 @@ main:
     load v0, 0
     loop:
         call inc_n
-        ; sne v0 0xa
-        ; call draw_0
-        ; call draw_1
+        sne v0 0x2d
+        call reset
         jmp loop
-    
     jmp inf
 inf: jmp inf
 
-draw_0:
+reset:
     cls
-    load v4, 0
-    load v5, 0
-    load [I] 0
-    draw v4, v5, 5        ; draw
-    ret
-draw_1:
-    cls
-    load v4, 0
-    load v5, 0
-    load [I] 5
-    draw v4, v5, 5        ; draw
+    load [I] n   ; load addr n in [I]
+    load v0 0    ; set v0 to 0
+    load [I] v0  ; store V0...Vx in memory addr stored in [I]
     ret
 
 inc_n:
