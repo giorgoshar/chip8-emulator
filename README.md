@@ -1,5 +1,4 @@
 # chip8-emulator
-Chip8 Emulator
 ----------------------
 
 A chip8 emulator in python with assembler/disassembler
