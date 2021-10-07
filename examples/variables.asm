@@ -17,8 +17,6 @@ main:
         load [I] v1
         load v1, v5
 
-        
-
         jmp loop
     jmp inf
 inf: jmp inf

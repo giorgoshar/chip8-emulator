@@ -9,7 +9,7 @@ function Usage {
     exit
 }
 
-if($args[0] -eq 'test') {
+if($args[0] -eq 'testcases') {
     if($args[1] -eq 'run') {
         $files = Get-ChildItem ".\tests\"
         foreach ($file in $files){

@@ -75,3 +75,6 @@ class Lexer:
         if keyword == 'SKNP': return InstrKind.SKNP
         if keyword == 'SUB' : return InstrKind.SUB
         return InstrKind.ERROR
+
+
+

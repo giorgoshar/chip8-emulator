@@ -12,8 +12,9 @@ class Parser:
         self.binary: bytearray = bytearray()
 
     def parse(self, tokens: List[Token]) -> bytearray:
-        self.resolve_labels(tokens)
+        self.parse_labels(tokens)
         self.tokens = iter(tokens)
+        
         for tok in self.tokens:
             if   tok.kind == TokenKind.DIRECTIVE:
                 if   tok.value == 'ascii':
@@ -216,19 +217,21 @@ class Parser:
             elif tok.kind == TokenKind.LABEL or tok.kind == TokenKind.EOF:
                 pass
             else: exit(f"\033[1;31m[ERROR]\033[0m Unexpected Token: {tok}")
+
         self.expected([TokenKind.EOF], tok)
         return self.binary
-    def resolve_labels(self, tokens: List[Token]) -> List[Token]:
+
+    def parse_labels(self, tokens: List[Token]) -> List[Token]:
         tokens_iter = iter(tokens)
         pc = 0x200
         for tok in tokens_iter:
-            if tok.kind == TokenKind.LABEL:
+            if tok.kind   == TokenKind.LABEL:
                 self.add_label(tok, pc)
             elif tok.kind == TokenKind.DIRECTIVE:
                 if tok.value   == 'ascii':
                     tok = next(tokens_iter)
                     self.expected([TokenKind.STRING], tok)
-                    pc += len(tok.value)  # remove quotation ""             
+                    pc += len(tok.value)   
                 elif tok.value == 'org':
                     tok = next(tokens_iter)
                     self.expected([TokenKind.NUMBER], tok)
@@ -290,13 +293,13 @@ class Parser:
             exit(f"\033[1;31m[ERROR]\033[0m register must be range [0, 16]")
         return int(value, 16) & 0xf
 
-    def call(self, addr) -> None:
+    def call(self, addr: int) -> None:
         opcode = (0x2000 | (addr & 0x0FFF)).to_bytes(2, 'big')
         self.binary.extend(opcode)
     def jmp(self, addr: int) -> None:
         opcode = (0x1000 | (addr & 0x0FFF)).to_bytes(2, 'big')
         self.binary.extend(opcode)
-    def draw(self, x, y, nibble):
+    def draw(self, x: int, y: int, nibble: int):
         opcode = (0xD000 | (x << 8) | (y << 4) | (nibble << 0)).to_bytes(2, 'big')
         self.binary.extend(opcode)
 
@@ -317,3 +320,4 @@ class Parser:
         line  = f"{self.filename}:{label['token'].loc.line}:{label['token'].loc.index + 1}"
         error = f"redifinition of '{label['token'].value}'"
         exit(f"\033[4;36m{line}\033[0m \033[1;31m[ERROR]\033[0m {error}")
+
