@@ -2,6 +2,7 @@ import re
 from typing import *
 from enum import Enum, auto
 from .tokenizer import *
+from utils.console import console
 
 class Parser:
     def __init__(self, filename: str, code: str):
@@ -142,7 +143,18 @@ class Parser:
                     # 8xy5
                     opcode = 0x8005 | (Vx << 8) | (Vy << 4)
                     self.binary.extend(opcode.to_bytes(2, 'big'))
+                elif tok.value == InstrKind.SUBN:
+                    tok = next(self.tokens)
+                    self.expected([TokenKind.REGISTER], tok)
+                    Vx = self.parse_register(tok.value)
 
+                    tok = next(self.tokens)
+                    self.expected([TokenKind.REGISTER], tok)
+                    Vy = self.parse_register(tok.value)
+
+                    # 8xy7
+                    opcode = 0x8007 | (Vx << 8) | (Vy << 4)
+                    self.binary.extend(opcode.to_bytes(2, 'big'))
                 elif tok.value == InstrKind.SE:
                     
                     tok = next(self.tokens)
@@ -216,7 +228,9 @@ class Parser:
                 else: exit(f'Could not parse instruction {tok}')
             elif tok.kind == TokenKind.LABEL or tok.kind == TokenKind.EOF:
                 pass
-            else: exit(f"\033[1;31m[ERROR]\033[0m Unexpected Token: {tok}")
+            else: 
+                console.error(f"Unexpected Token: {tok}")
+                exit(1)
 
         self.expected([TokenKind.EOF], tok)
         return self.binary

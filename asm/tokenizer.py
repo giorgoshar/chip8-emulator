@@ -30,6 +30,7 @@ class InstrKind(Enum):
     LOAD  = auto()
     ADD   = auto()
     SUB   = auto()
+    SUBN  = auto()
     RAND  = auto()
     DRAW  = auto()
     SE    = auto()

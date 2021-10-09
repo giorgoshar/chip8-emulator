@@ -7,7 +7,7 @@ from .tokenizer  import *
 
 class Lexer:
     keywords: list = ['jmp', 'load', 'cls', 'draw', 'add', 'rand', 'se', 'sne', 
-                      'call', 'ret', 'skp', 'sknp', 'sub']
+                      'call', 'ret', 'skp', 'sknp', 'sub', 'subn']
     def __init__(self):
         self.tokens: list = []
 
@@ -74,7 +74,5 @@ class Lexer:
         if keyword == 'SKP' : return InstrKind.SKP
         if keyword == 'SKNP': return InstrKind.SKNP
         if keyword == 'SUB' : return InstrKind.SUB
+        if keyword == 'SUBN': return InstrKind.SUBN
         return InstrKind.ERROR
-
-
-
