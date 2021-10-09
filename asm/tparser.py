@@ -71,8 +71,8 @@ class Parser:
                         tok = next(self.tokens)
                         self.expected([TokenKind.NUMBER, TokenKind.REGISTER, TokenKind.INDEX], tok)
                         if tok.kind == TokenKind.NUMBER:
-                            Vy = self.parse_register(tok.value)
-                            opcode = (0x6000 | (Vx << 8) | ( Vy & 0x00ff))
+                            value = self.parse_number(tok.value)
+                            opcode = (0x6000 | (Vx << 8) | ( value & 0x00ff))
                         elif tok.kind == TokenKind.INDEX:
                             opcode = (0xF065  | (Vx << 8))
                         elif tok.kind == TokenKind.REGISTER:
@@ -92,6 +92,7 @@ class Parser:
                         elif tok.kind == TokenKind.REGISTER:
                             Vx = self.parse_register(tok.value)
                             opcode = (0xF055 | (Vx << 8))
+                    
                     self.binary.extend(opcode.to_bytes(2, 'big'))
 
                 elif tok.value == InstrKind.DRAW:
@@ -301,6 +302,7 @@ class Parser:
             return int(value, 16)
         if value in [v for v in 'abcdef']:
             return int(value, 16)
+        
         return int(value)
     def parse_register(self, value: str) -> int:
         if 0 > self.parse_number(value) < 0xf:
