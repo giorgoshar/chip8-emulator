@@ -34,5 +34,5 @@ with open(output, 'wb') as fp:
     fp.write(binary)
 
 fullpath = os.getcwd() + output
-console.done(f"bin : {fullpath}")
-console.done(f"size: {len(binary)}bytes")
+console.info(f"bin : {fullpath}")
+console.info(f"size: {len(binary)}bytes")
