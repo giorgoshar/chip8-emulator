@@ -3,9 +3,10 @@ import os.path
 import pygame
 import random
 from enum import Enum, auto
+from utils.console import console
 from emulator import *
-pygame.init()
 
+pygame.init()
 screen = pygame.display.set_mode([900, 600], pygame.HWSURFACE |pygame.DOUBLEBUF)
 font   = pygame.font.SysFont("monospace", 14)
 
@@ -102,7 +103,7 @@ class Chip8:
         elif ins == 0x3: self.SE_Vx_kk(x, kk)
         elif ins == 0x4: self.SNE_Vx_kk(x, kk)
         elif ins == 0x5: self.SE_Vx_Vy(x, y)
-        elif ins == 0x6: self.LD_VX(x, kk)
+        elif ins == 0x6: self.LD_Vx_kk(x, kk)
         elif ins == 0x7: self.ADD_VX(x, kk)
         elif ins == 0x9: self.SNE_Vx_Vy(x, y)
         elif ins == 0xa: self.LD_I(nnn)
@@ -181,7 +182,7 @@ class Chip8:
     def SNE_Vx_Vy(self, x, y):
         if self.cpu.v[x] != self.cpu.v[y]:
             self.cpu.pc += 2
-    def LD_VX(self, x, kk):
+    def LD_Vx_kk(self, x, kk):
         self.cpu.v[x] = kk
     def CLS(self):
         self.video.clear()
@@ -200,8 +201,8 @@ class Chip8:
     # -- END INPUT HANDLE
 
     # -- BEGIN Logical Operatios
-    def lo_ld(self, x, y):  self.cpu.v[x] = self.cpu.v[y]
-    def lo_or(self, x, y):  self.cpu.v[x] |= self.cpu.v[y]
+    def lo_ld(self, x, y): self.cpu.v[x] = self.cpu.v[y]
+    def lo_or(self, x, y): self.cpu.v[x] |= self.cpu.v[y]
     def lo_and(self, x, y): self.cpu.v[x] &= self.cpu.v[y]
     def lo_xor(self, x, y): self.cpu.v[x] ^= self.cpu.v[y]
     def lo_add(self, x, y):
@@ -211,13 +212,13 @@ class Chip8:
             self.cpu.v[0xf] = 0
         self.cpu.v[x] = (self.cpu.v[x] + self.cpu.v[y]) & 0xff
     def lo_sub(self, x, y):
-        if self.cpu.v[x] >= self.cpu.v[y]:
+        if self.cpu.v[x] > self.cpu.v[y]:
             self.cpu.v[0xf] = 1
         else:
             self.cpu.v[0xf] = 0
         self.cpu.v[x] = (self.cpu.v[x] - self.cpu.v[y]) & 0xff
     def lo_subn(self, x, y):
-        if self.cpu.v[y] >= self.cpu.v[x]:
+        if self.cpu.v[y] > self.cpu.v[x]:
             self.cpu.v[0xf] = 1
         else:
             self.cpu.v[0xf] = 0
@@ -251,7 +252,7 @@ class Chip8:
     def LD_ST_Vx(self, x):
         self.cpu.timer['sound'] = self.cpu.v[x]
     def LD_F_Vx(self, x):
-        self.cpu.i = self.cpu.v[x] & 0xff
+        self.cpu.i = (self.cpu.v[x] * 0x5) & 0xff
     def ADD_I_Vx(self, x):
         self.cpu.i += self.cpu.v[x]
     def LD_I_Vx(self, x):
@@ -290,8 +291,8 @@ class Emulator:
         self.registerWindowView = Window(300, 150)
         self.keyboardWindowView = Window(200, 150)
 
-        self.beginMemView = 0x200 # self.chip8.cpu.pc - 20
-        self.endMemView   = 0x210# self.chip8.cpu.pc + 20
+        self.beginMemView = self.chip8.cpu.pc - 20
+        self.endMemView   = self.chip8.cpu.pc + 20
 
         self.state = self.State.RUNNING
         self.init()
@@ -318,12 +319,10 @@ class Emulator:
 
                 self.chip8.keyboard.fire(event)
 
-
             # switch states
             if self.state == self.State.RUNNING:
                 self.chip8.tick()
 
-            # self.chip8.video.render(self.screen)
             if self.chip8.toRender == True:
                 self.chip8.video.render(self.screen)
                 self.chip8.toRender = False
@@ -337,17 +336,24 @@ class Emulator:
         self.chip8.keyboard.keys[pkey] = vkey
 
     def updateMemoryWindow(self):
-        # import disasm
-        # disasm_str = disasm.disasm(self.chip8.cpu.opcode)
+        
+        import disasm
+        opcode = (self.chip8.memory.read(self.chip8.cpu.pc) << 8) | self.chip8.memory.read(self.chip8.cpu.pc + 1)
         self.memoryWindowView.fill((0, 0, 0))
+
         y, x = (0, 0)
-        # if self.chip8.cpu.pc not in range(self.beginMemView + 5, self.endMemView - 5):
-        #     self.beginMemView = self.chip8.cpu.pc - 20
-        #     self.endMemView   = self.chip8.cpu.pc + 20
+        if self.chip8.cpu.pc not in range(self.beginMemView + 5, self.endMemView - 5):
+            self.beginMemView = self.chip8.cpu.pc - 20
+            self.endMemView   = self.chip8.cpu.pc + 20
  
         for i in range(self.beginMemView, self.endMemView, 2):
-            color = (255, 0, 0) if i == self.chip8.cpu.pc else (255, 255, 255)
-            text  = font.render(f"{i:>04x}: {self.chip8.memory.buffer[i]:>02x} {self.chip8.memory.buffer[i + 1]:02x}", True, color)
+            color     = (255, 0, 0) if i == self.chip8.cpu.pc else (255, 255, 255)
+            byte_lo   = self.chip8.memory.buffer[i]
+            byte_hi   = self.chip8.memory.buffer[i + 1]
+            opcode    = (byte_lo << 8) | byte_hi
+            disasmStr = disasm.disasm(opcode)
+
+            text  = font.render(f"{i:>04x}: {byte_lo:>02x} {byte_hi:02x}  |   {disasmStr}", True, color)
             self.memoryWindowView.blit(text, (0, y))
             y += 16
 
@@ -419,13 +425,17 @@ def Usage():
     """)
     exit(0)
 
-romname = ""
-if len(sys.argv) == 2:
-    if os.path.isfile(sys.argv[1]):
-        romname = sys.argv[1]
-    else:
-        sys.exit(f'[__ERROR__] file {sys.argv[1]} doesnt exist')
-else: Usage()
-emulator = Emulator(screen)
-# emulator.state = Emulator.State.DEBUG
-emulator.run(romname)
+
+if __name__ == "__main__":
+    romname = ""
+    if len(sys.argv) == 2:
+        if os.path.isfile(sys.argv[1]):
+            romname = sys.argv[1]
+        else:
+            sys.exit(f'[__ERROR__] file {sys.argv[1]} doesnt exist')
+    else: Usage()
+    emulator = Emulator(screen)
+    emulator.state = Emulator.State.DEBUG
+    emulator.run(romname)
+
+pygame.quit()
