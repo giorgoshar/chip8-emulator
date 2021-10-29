@@ -14,6 +14,7 @@ class Parser:
 
     def parse(self, tokens: List[Token]) -> bytearray:
         self.parse_labels(tokens)
+        self.resolve_alias(tokens)
         self.tokens = iter(tokens)
         
         for tok in self.tokens:
@@ -49,7 +50,7 @@ class Parser:
                 else: self.undefined(tok)
             elif tok.kind == TokenKind.INSTRUCTION:
 
-                if tok.value == InstrKind.CLS:
+                if   tok.value == InstrKind.CLS:
                     self.binary.extend(0x00E0.to_bytes(2, 'big'))
                 elif tok.value == InstrKind.JMP:
                     tok = next(self.tokens)
@@ -229,12 +230,34 @@ class Parser:
                 else: exit(f'Could not parse instruction {tok}')
             elif tok.kind == TokenKind.LABEL or tok.kind == TokenKind.EOF:
                 pass
+            elif tok.kind == TokenKind.ALIAS:
+                next(self.tokens)
+                next(self.tokens)
+                continue
             else: 
                 console.error(f"Unexpected Token: {tok}")
                 exit(1)
 
         self.expected([TokenKind.EOF], tok)
         return self.binary
+
+    def resolve_alias(self, tokens):
+        tokens_iter = iter(tokens)
+        for tok in tokens_iter:
+            if tok.kind == TokenKind.ALIAS:
+
+                alias_name = next(tokens_iter)
+                self.expected([TokenKind.IDENTIFIER], alias_name)
+
+                alias_body = next(tokens_iter)
+                self.expected([TokenKind.REGISTER, TokenKind.NUMBER], alias_body)
+                
+                for index in range(len(tokens)):
+                    if (tokens[index].kind == TokenKind.IDENTIFIER or tokens[index].kind == TokenKind.NUMBER) and (tokens[index].value == alias_name.value):
+                        tokens[index] = Token(alias_body.kind, alias_body.value, tokens[index].loc)
+
+                for token in tokens:
+                    print(token)
 
     def parse_labels(self, tokens: List[Token]) -> List[Token]:
         tokens_iter = iter(tokens)
@@ -315,7 +338,7 @@ class Parser:
     def jmp(self, addr: int) -> None:
         opcode = (0x1000 | (addr & 0x0FFF)).to_bytes(2, 'big')
         self.binary.extend(opcode)
-    def draw(self, x: int, y: int, nibble: int):
+    def draw(self, x: int, y: int, nibble: int) -> None:
         opcode = (0xD000 | (x << 8) | (y << 4) | (nibble << 0)).to_bytes(2, 'big')
         self.binary.extend(opcode)
 

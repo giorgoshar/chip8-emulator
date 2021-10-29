@@ -20,6 +20,7 @@ class TokenKind(Enum):
     ERROR       = auto()
     OPERATION   = auto()
     IDENTIFIER  = auto()
+    ALIAS       = auto()
     EOF         = auto()
 
 class InstrKind(Enum):

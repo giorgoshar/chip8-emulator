@@ -26,6 +26,7 @@ class Lexer:
             ('DIRECTIVE',r'\.[A-Za-z0-9]+'),            # Match directive
             ('COMMA',    r'\,'),                        # Match comma
             ('COMMENT',  r';.*'),                       # Match comments
+            ('ALIAS',    r'%alias'),                    # Match alias
             ('MISMATCH', r'.'),                         # Any other character
         ]
         tok_regex  = '|'.join(r'(?P<%s>%s)' % pair for pair in token_specification)
@@ -52,6 +53,7 @@ class Lexer:
                 self.tokens.append(Token(TokenKind.IDENTIFIER, value, location))
             
             elif kind in ['SKIP', 'COMMA', 'COMMENT']: continue
+            elif kind == 'ALIAS': self.tokens.append(Token(TokenKind.ALIAS, value, location))
             elif kind == 'MISMATCH': exit(f'Unexpected token `{value!r}` at line {line_num}')
 
         self.tokens.append(Token(TokenKind.EOF, '\\0', location))
