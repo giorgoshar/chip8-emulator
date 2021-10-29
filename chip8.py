@@ -6,6 +6,8 @@ from enum import Enum, auto
 from utils.console import console
 from emulator import *
 
+os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (500, 300)
+
 pygame.init()
 screen = pygame.display.set_mode([900, 600], pygame.HWSURFACE |pygame.DOUBLEBUF)
 font   = pygame.font.SysFont("monospace", 14)
@@ -212,17 +214,11 @@ class Chip8:
             self.cpu.v[0xf] = 0
         self.cpu.v[x] = (self.cpu.v[x] + self.cpu.v[y]) & 0xff
     def lo_sub(self, x, y):
-        if self.cpu.v[x] > self.cpu.v[y]:
-            self.cpu.v[0xf] = 1
-        else:
-            self.cpu.v[0xf] = 0
-        self.cpu.v[x] = (self.cpu.v[x] - self.cpu.v[y]) & 0xff
+        self.cpu.v[0xf] = 1 if (self.cpu.v[x] > self.cpu.v[y]) else 0
+        self.cpu.v[x]   = (self.cpu.v[x] - self.cpu.v[y]) & 0xff
     def lo_subn(self, x, y):
-        if self.cpu.v[y] > self.cpu.v[x]:
-            self.cpu.v[0xf] = 1
-        else:
-            self.cpu.v[0xf] = 0
-        self.cpu.v[x] = (self.cpu.v[y] - self.cpu.v[x]) & 0xff
+        self.cpu.v[0xf] = 1 if (self.cpu.v[y] > self.cpu.v[x]) else 0
+        self.cpu.v[x]   = (self.cpu.v[y] - self.cpu.v[x]) & 0xff
     def lo_shr(self, x, y):
         self.cpu.v[0xf] = self.cpu.v[x] & 0x1
         self.cpu.v[x]   = (self.cpu.v[x] >> 1) & 0xff
@@ -306,6 +302,8 @@ class Emulator:
         clock = pygame.time.Clock()
         while self.isRunning:
             clock.tick(60)
+            self.screen.fill((0, 0, 0))
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.isRunning = False
@@ -323,9 +321,10 @@ class Emulator:
             if self.state == self.State.RUNNING:
                 self.chip8.tick()
 
-            if self.chip8.toRender == True:
-                self.chip8.video.render(self.screen)
-                self.chip8.toRender = False
+            self.chip8.video.render(self.screen)
+            # if self.chip8.toRender == True:
+            #     self.chip8.video.render(self.screen)
+            #     self.chip8.toRender = False
 
             self.updateMemoryWindow()
             self.updateRegistersWindow()
@@ -425,7 +424,6 @@ def Usage():
     """)
     exit(0)
 
-
 if __name__ == "__main__":
     romname = ""
     if len(sys.argv) == 2:
@@ -435,7 +433,7 @@ if __name__ == "__main__":
             sys.exit(f'[__ERROR__] file {sys.argv[1]} doesnt exist')
     else: Usage()
     emulator = Emulator(screen)
-    emulator.state = Emulator.State.DEBUG
+    # emulator.state = Emulator.State.DEBUG
     emulator.run(romname)
 
 pygame.quit()
