@@ -1,4 +1,14 @@
+.gitignore
 test.py
 *.o
-*.ext
+*.out
+*.ch8
 roms/
+asm/__pycache__/*
+__pycache__/*
+utils/__pycache__/console.cpython-38.pyc
+o_example.txt
+test2.asm
+test.asm
+output.ch8
+asm/tparser.py

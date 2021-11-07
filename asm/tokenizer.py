@@ -21,7 +21,18 @@ class TokenKind(Enum):
     OPERATION   = auto()
     IDENTIFIER  = auto()
     ALIAS       = auto()
+    STATEMENT   = auto()
+    BINOP       = auto()
     EOF         = auto()
+
+class StmtKind(Enum):
+    IF    = auto()
+    ELIF  = auto()
+    ELSE  = auto()
+    WHILE = auto()
+    BEGIN = auto()
+    END   = auto()
+    ERROR = auto()
 
 class InstrKind(Enum):
     CLS   = auto()

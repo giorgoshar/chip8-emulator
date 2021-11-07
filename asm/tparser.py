@@ -234,6 +234,33 @@ class Parser:
                 next(self.tokens)
                 next(self.tokens)
                 continue
+            elif tok.kind == TokenKind.STATEMENT:
+                print("---------- START STATEMENT --------------")
+                
+                def IfStmntToBinary(r1, op, r2):
+                    console.warn(f"IfStmntToBinary: `{r1.value} {op.value} {r2.value}`")
+                
+                if tok.value == StmtKind.IF:
+                    reg1 = next(self.tokens)
+                    self.expected([TokenKind.REGISTER], reg1)
+
+                    op = next(self.tokens)
+                    self.expected([TokenKind.OPERATION], op)
+
+                    reg2 = next(self.tokens)
+                    self.expected([TokenKind.REGISTER], reg2)
+
+                    IfStmntToBinary(reg1, op, reg2)
+                
+                tok = next(self.tokens)
+                self.expected([TokenKind.STATEMENT], tok)
+                assert tok.value == StmtKind.BEGIN
+
+
+
+                console.error(f"Not implemented Token: {tok}")
+                print("---------- END STATEMENT --------------")
+                exit()
             else: 
                 console.error(f"Unexpected Token: {tok}")
                 exit(1)
@@ -263,6 +290,7 @@ class Parser:
         tokens_iter = iter(tokens)
         pc = 0x200
         for tok in tokens_iter:
+            print(tok)
             if tok.kind   == TokenKind.LABEL:
                 self.add_label(tok, pc)
             elif tok.kind == TokenKind.DIRECTIVE:
@@ -279,6 +307,7 @@ class Parser:
                     self.add_label(tok, pc)
                     while True:
                         tok = next(tokens_iter)
+                        print(tok)
                         if tok.value == 'endfont':
                             break
                         pc += 1

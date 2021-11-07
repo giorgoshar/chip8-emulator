@@ -433,7 +433,6 @@ if __name__ == "__main__":
             sys.exit(f'[__ERROR__] file {sys.argv[1]} doesnt exist')
     else: Usage()
     emulator = Emulator(screen)
-    # emulator.state = Emulator.State.DEBUG
     emulator.run(romname)
 
 pygame.quit()

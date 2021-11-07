@@ -7,6 +7,7 @@ class Registers:
         self.regs = [0 for i in range(16)]
 
 regs = [0 for i in range(16)]
+
 def load_Vx_kk(x, kk):
     regs[x] = kk
 def load_Vx_Vy(x, y):
@@ -20,9 +21,15 @@ def sne_Vx_kk(x, kk):
     if regs[x] != kk:
         return True
     return False
+def lo_shr(x, y):
+    regs[0xf] = regs[x] & 0x1
+    regs[x]   = (regs[x] >> 1) & 0xff
+def lo_shl(x, y):
+    regs[0xf] = regs[x] >> 7
+    regs[x]   = (regs[x] << 1) & 0xff
+
 
 os.system("cls")
-
 load_Vx_kk(0x0, 0)
 load_Vx_kk(0x1, 5)
 

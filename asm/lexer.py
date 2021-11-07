@@ -7,7 +7,7 @@ from .tokenizer  import *
 
 class Lexer:
     keywords: list = ['jmp', 'load', 'cls', 'draw', 'add', 'rand', 'se', 'sne', 
-                      'call', 'ret', 'skp', 'sknp', 'sub', 'subn']
+                      'call', 'ret', 'skp', 'sknp', 'sub', 'subn', 'if', 'end', 'begin']
     def __init__(self):
         self.tokens: list = []
 
@@ -20,7 +20,7 @@ class Lexer:
             ('REG_I',    r'\[I\]'),                     # match `i` register
             ('LABEL',    r'[A-Za-z0-9_]+\:'),           # Match Labels
             ('ID',       r'[A-Za-z0-9_]+'),             # Identifiers
-            ('OP',       r'[+\-*/]'),                   # Arithmetic operators
+            ('OP',       r'[+\-*/<>]'),                   # Arithmetic operators
             ('NEWLINE',  r'\n'),                        # Line endings
             ('SKIP',     r'[ \t]+'),                    # Skip over spaces and tabs
             ('DIRECTIVE',r'\.[A-Za-z0-9]+'),            # Match directive
@@ -46,14 +46,17 @@ class Lexer:
             elif kind == 'REGISTER':  self.tokens.append(Token(TokenKind.REGISTER,  value[1:],  location))
             elif kind == 'REG_I':     self.tokens.append(Token(TokenKind.INDEX,     value,      location))    
             elif kind == 'NEWLINE':   line_start = mo.end(); line_num += 1
-                        
             elif kind == 'ID' and value.lower() in self.keywords:
-                self.tokens.append(Token(TokenKind.INSTRUCTION, self.tokenize_instr(value.upper()), location))
+                if value.lower() in ['if', 'end', 'begin', 'else']:
+                    self.tokens.append(Token(TokenKind.STATEMENT, self.tokenize_stmnt(value.upper()), location))
+                else:
+                    self.tokens.append(Token(TokenKind.INSTRUCTION, self.tokenize_instr(value.upper()), location))
             elif kind == 'ID' and value not in self.keywords:
                 self.tokens.append(Token(TokenKind.IDENTIFIER, value, location))
             
             elif kind in ['SKIP', 'COMMA', 'COMMENT']: continue
-            elif kind == 'ALIAS': self.tokens.append(Token(TokenKind.ALIAS, value, location))
+            elif kind == 'ALIAS':     self.tokens.append(Token(TokenKind.ALIAS,     value, location))
+            elif kind == 'STATEMENT': self.tokens.append(Token(TokenKind.STATEMENT, value, location))
             elif kind == 'MISMATCH': exit(f'Unexpected token `{value!r}` at line {line_num}')
 
         self.tokens.append(Token(TokenKind.EOF, '\\0', location))
@@ -78,3 +81,12 @@ class Lexer:
         if keyword == 'SUB' : return InstrKind.SUB
         if keyword == 'SUBN': return InstrKind.SUBN
         return InstrKind.ERROR
+
+
+    def tokenize_stmnt(self, keyword: str) -> StmtKind:
+        if keyword == 'IF'   : return StmtKind.IF
+        if keyword == 'ELSE' : return StmtKind.ELIF
+        if keyword == 'END'  : return StmtKind.END
+        if keyword == 'BEGIN': return StmtKind.BEGIN
+
+        return StmtKind.ERROR
