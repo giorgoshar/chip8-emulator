@@ -18,7 +18,6 @@ class Parser:
         self.filename: str   = filename
         self.lexer   : Lexer = lex
         self.labels  : List[Label] = []
-        self.vars    : List[Var] = []
 
     def parse_directive(self) -> bytearray:
         output = bytearray()

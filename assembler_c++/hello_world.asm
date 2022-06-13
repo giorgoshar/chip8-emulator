@@ -1,8 +1,6 @@
 .org 0x200
 jmp main
 main:
-    load v9, 0xf
-
     load v1, 0
     load [I], letter_H
     draw v1, v2, 5

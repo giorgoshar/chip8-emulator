@@ -1,5 +1,6 @@
-.ascii "HelloWorld"
 jmp main
+.ascii "HelloWorld"
+
 main:
     load v1, 0
     load [I], letter_H

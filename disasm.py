@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 
 def disasm(opcode):
@@ -9,7 +10,8 @@ def disasm(opcode):
     kk  =  opcode & 0x00ff
     nnn =  opcode & 0x0fff
 
-    if   ins == 0x0 and (opcode & 0xff) == 0xe0: return "CLS"
+    if   ins == 0x0 and (opcode & 0xff) == 0x00: return "NOP"
+    elif ins == 0x0 and (opcode & 0xff) == 0xe0: return "CLS"
     elif ins == 0x0 and (opcode & 0xff) == 0xee: return "RET"
     elif ins == 0x1: dissasmStr = f'JMP    0x{nnn:x}'
     elif ins == 0x2: dissasmStr = f'CALL   0x{nnn:x}'

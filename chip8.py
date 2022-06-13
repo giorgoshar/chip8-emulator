@@ -214,11 +214,11 @@ class Chip8:
             self.cpu.v[0xf] = 0
         self.cpu.v[x] = (self.cpu.v[x] + self.cpu.v[y]) & 0xff
     def lo_sub(self, x, y):
-        self.cpu.v[0xf] = 1 if (self.cpu.v[x] > self.cpu.v[y]) else 0
         self.cpu.v[x]   = (self.cpu.v[x] - self.cpu.v[y]) & 0xff
+        self.cpu.v[0xf] = 1 if (self.cpu.v[x] > self.cpu.v[y]) else 0
     def lo_subn(self, x, y):
-        self.cpu.v[0xf] = 1 if (self.cpu.v[y] > self.cpu.v[x]) else 0
         self.cpu.v[x]   = (self.cpu.v[y] - self.cpu.v[x]) & 0xff
+        self.cpu.v[0xf] = 1 if (self.cpu.v[y] > self.cpu.v[x]) else 0
     def lo_shr(self, x, y):
         self.cpu.v[0xf] = self.cpu.v[x] & 0x1
         self.cpu.v[x]   = (self.cpu.v[x] >> 1) & 0xff
@@ -296,6 +296,10 @@ class Emulator:
     def init(self):
         self.chip8.keyboard.keys[pygame.K_w] = 0x0
         self.chip8.keyboard.keys[pygame.K_s] = 0x1
+    
+    def reset(self):
+        self.chip8.cpu.reset()
+        self.chip8.memory.clear()
 
     def run(self, romname):
         self.chip8.load(romname)
@@ -311,6 +315,8 @@ class Emulator:
                     if   event.key == pygame.K_F1: self.state = self.State.RUNNING
                     elif event.key == pygame.K_F2: self.state = self.State.PAUSED
                     elif event.key == pygame.K_F3: self.state = self.State.DEBUG
+                    elif event.key == pygame.K_r : 
+                        self.chip8.load(romname)
 
                     if event.key == pygame.K_n and self.state == self.State.DEBUG:
                         self.chip8.tick()

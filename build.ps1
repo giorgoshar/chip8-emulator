@@ -1,5 +1,5 @@
+$SCRIPT_NAME = $MyInvocation.MyCommand.Name
 function Usage {
-    $SCRIPT_NAME = $MyInvocation.MyCommand.Name
     Write-Host "Usage: $($SCRIPT_NAME) [COMMAND] [ARGS]"
     Write-Host "       comp [filename] the path of file"
     Write-Host "            [output]   output file, default is 'a.o'"
