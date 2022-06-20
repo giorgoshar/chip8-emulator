@@ -1,11 +1,17 @@
+
 jmp main
 .ascii "Hello"
 
-a := 1;
+{
+    load v1 2
+}
 
 func main {
-    load v5 0
+    load v14 5
     load v6 45
     jmp inf
 }
-load v8 3
+
+func inf {
+    jmp inf
+}
