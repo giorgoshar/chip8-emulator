@@ -9,20 +9,26 @@ Loc = namedtuple('Loc', ['line', 'index'])
 class TokenKind(Enum):
     NEWLINE     = auto()
     NUMBER      = auto()
+    ASSIGN      = auto()
+    END         = auto()
     STRING      = auto()
     REGISTER    = auto()
     INDEX       = auto()
     LABEL       = auto()
     DIRECTIVE   = auto()
     INSTRUCTION = auto()
+    STATEMENT   = auto()
+    KEYWORD     = auto()
     SKIP        = auto()
     COMMA       = auto()
     COMMENT     = auto()
     ERROR       = auto()
     OPERATOR    = auto()
     IDENTIFIER  = auto()
+    OBRACKET    = auto()
+    CBRACKET    = auto()
     ALIAS       = auto()
-    STATEMENT   = auto()
+    FUNC        = auto()
     BINOP       = auto()
     EOF         = auto()
     INVALID     = auto()
@@ -64,8 +70,15 @@ class Token:
     kind : TokenKind
     value: Any
     loc  : Loc
+    
     def __str__(self):
         return f'{self.kind:30} {self.value:<20} Location:{self.loc}'
+    
+    def __eq__(self, kind: TokenKind):
+        return self.kind == kind
+    
+    def __ne__(self, kind: TokenKind):
+        return self.kind != kind
 
 @dataclass
 class Label:
@@ -76,7 +89,7 @@ class Label:
 class Lexer:
     keywords: list = ['jmp', 'call', 'ret', 'cls', 'load', 'draw', 'skp', 'sknp', 
                       'add', 'rand', 'se', 'sne', 'sub', 'subn', 
-                      'if', 'else', 'elif', 'end', 'begin']
+                      'if', 'else', 'elif', 'end', 'begin', 'func']
     def __init__(self, code:str = ""):
         self.tokens: list  = []
         self.index:  int   = 0
@@ -94,6 +107,7 @@ class Lexer:
         return self.tokens[self.index]
 
     def eat(self, kind:List[TokenKind]) -> Token:
+        
         if not self.has_more():
             return self.set_invalid_token()
 
@@ -122,20 +136,24 @@ class Lexer:
     
     def tokenize(self, code: str) -> List[Token]:
         token_specification = [
-            ('NUMBER',   r'0[xX][0-9a-fA-F]+|[0-9]+'),  # Integer or decimal number
-            ('STRING',   r'\".*\"'),                    # Match string inside quotation and ""
-            ('REGISTER', r'[v|V]([0-9a-fA-F]+)'),       # Match v1-vf registers
-            ('REG_I',    r'\[I\]'),                     # match `i` register
-            ('LABEL',    r'[A-Za-z0-9_]+\:'),           # Match Labels
-            ('ID',       r'[A-Za-z0-9_]+'),             # Identifiers
-            ('OP',       r'[>=]{2}|[<=]{2}|[+\-*<>]'),  # Arithmetic/Unary operators
-            ('NEWLINE',  r'\n'),                        # Line endings
-            ('SKIP',     r'[ \t]+'),                    # Skip over spaces and tabs
-            ('DIRECTIVE',r'\.[A-Za-z0-9]+'),            # Match directive
-            ('COMMA',    r'\,'),                        # Match comma
-            ('COMMENT',  r';.*'),                       # Match comments
-            ('ALIAS',    r'%alias'),                    # Match alias
-            ('MISMATCH', r'.'),                         # Any other character
+            ('END',        r';'),                         # Match END `;`
+            ('NUMBER',     r'0[xX][0-9a-fA-F]+|[0-9]+'),  # Integer or decimal number
+            ('ASSIGN',     r':='),                        # Match Assignmentr `:=`
+            ('STRING',     r'\".*\"'),                    # Match string inside quotation and ""
+            ('REGISTER',   r'[v|V]([0-9a-fA-F]+)'),       # Match v1-vf registers
+            ('REG_I',      r'\[I\]'),                     # match `i` register
+            ('LABEL',      r'[A-Za-z0-9_]+\:'),           # Match Labels
+            ('ID',         r'[A-Za-z0-9_]+'),             # Identifiers
+            ('OP',         r'[>=]{2}|[<=]{2}|[+\-*<>]'),  # Arithmetic/Unary operators
+            ('NEWLINE',    r'\n'),                        # Line endings
+            ('SKIP',       r'[ \t]+'),                    # Skip over spaces and tabs
+            ('DIRECTIVE',  r'\.[A-Za-z0-9]+'),            # Match directive
+            ('COMMA',      r'\,'),                        # Match comma
+            ('COMMENT',    r'#.*'),                       # Match comments
+            ('ALIAS',      r'%alias'),                    # Match alias
+            ('OBRACKET',   r'{'),                         # Match { Open  bracket
+            ('CBRACKET',   r'}'),                         # Match } close bracket
+            ('MISMATCH',   r'.'),                         # Any other character
         ]
         tok_regex  = '|'.join(r'(?P<%s>%s)' % pair for pair in token_specification)
         line_num   = 1
@@ -145,26 +163,31 @@ class Lexer:
             value    = mo.group()
             column   = mo.start() - line_start
             location = Loc(line_num, column)
-
-            if   kind == 'NUMBER':    self.tokens.append(Token(TokenKind.NUMBER,    value,      location))
-            elif kind == 'STRING':    self.tokens.append(Token(TokenKind.STRING,    value[1:-1],location))
-            elif kind == 'OP':        self.tokens.append(Token(TokenKind.OPERATOR,  self.tokenize_binop(value),      location))
-            elif kind == 'LABEL':     self.tokens.append(Token(TokenKind.LABEL,     value[:-1], location))
-            elif kind == 'DIRECTIVE': self.tokens.append(Token(TokenKind.DIRECTIVE, value[1:],  location))
-            elif kind == 'REGISTER':  self.tokens.append(Token(TokenKind.REGISTER,  value[1:],  location))
-            elif kind == 'REG_I':     self.tokens.append(Token(TokenKind.INDEX,     value,      location))    
-            elif kind == 'NEWLINE':   line_start = mo.end(); line_num += 1
-            elif kind == 'ID' and value.lower() in self.keywords:
-                if value.lower() in ['if', 'end', 'begin', 'else']:
-                    self.tokens.append(Token(TokenKind.STATEMENT, self.tokenize_stmnt(value.upper()), location))
-                else:
-                    self.tokens.append(Token(TokenKind.INSTRUCTION, self.tokenize_instr(value.upper()), location))
-            elif kind == 'ID' and value not in self.keywords:
-                self.tokens.append(Token(TokenKind.IDENTIFIER, value, location))
-            elif kind == 'ALIAS':     self.tokens.append(Token(TokenKind.ALIAS,     value, location))
-            elif kind == 'STATEMENT': self.tokens.append(Token(TokenKind.STATEMENT, value, location))
-            elif kind in ['SKIP', 'COMMA', 'COMMENT']: continue
-            elif kind == 'MISMATCH': exit(f'Unexpected token `{value!r}` at line {line_num}')
+            
+            match kind:
+                case 'END':       self.tokens.append(Token(TokenKind.END,       value, location))
+                case 'NUMBER':    self.tokens.append(Token(TokenKind.NUMBER,    value, location))
+                case 'ASSIGN':    self.tokens.append(Token(TokenKind.ASSIGN,    value, location))
+                case 'STRING':    self.tokens.append(Token(TokenKind.STRING,    value[1:-1],location))
+                case 'OP':        self.tokens.append(Token(TokenKind.OPERATOR,  self.tokenize_binop(value),      location))
+                case 'LABEL':     self.tokens.append(Token(TokenKind.LABEL,     value[:-1], location))
+                case 'DIRECTIVE': self.tokens.append(Token(TokenKind.DIRECTIVE, value[1:],  location))
+                case 'REGISTER':  self.tokens.append(Token(TokenKind.REGISTER,  value[1:],  location))
+                case 'REG_I':     self.tokens.append(Token(TokenKind.INDEX,     value,      location))    
+                case 'ID':
+                    if value.lower() == 'func':
+                        token = Token(TokenKind.FUNC, value, location)
+                    elif value.lower() in self.keywords:
+                        token = Token(TokenKind.INSTRUCTION, self.tokenize_instr(value.upper()), location)
+                    else:
+                        token = Token(TokenKind.IDENTIFIER, value, location)
+                    self.tokens.append(token)
+                case 'ALIAS':     self.tokens.append(Token(TokenKind.ALIAS,     value, location))
+                case 'OBRACKET': self.tokens.append(Token(TokenKind.OBRACKET, value, location))
+                case 'CBRACKET': self.tokens.append(Token(TokenKind.CBRACKET, value, location))
+                case 'NEWLINE':   line_start = mo.end(); line_num += 1
+                case 'SKIP', 'COMMA', 'COMMENT': continue
+                case 'MISMATCH': exit(f'Unexpected token `{value!r}` at line {line_num}, index:{column}')
 
         self.tokens.append(Token(TokenKind.EOF, '\\0', location))
         self.token = self.tokens[self.index]
@@ -192,7 +215,6 @@ class Lexer:
         if keyword == 'ELSE' : return StmtKind.ELSE
         if keyword == 'END'  : return StmtKind.END
         if keyword == 'BEGIN': return StmtKind.BEGIN
-
         return StmtKind.ERROR
     
     def tokenize_binop(self, keyword: str) -> BinOpKind:

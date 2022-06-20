@@ -45,13 +45,18 @@ if($args[0] -eq 'testcases') {
         }
     }
 }
+elseif($args[0] -eq 'comp') {
+    $filename = $args[1]
+    $output    = "a.out"
+    $assembler = @("./asm.py", $filename, $output)
+    & 'py' $assembler
+}
 elseif($args[0] -eq 'run') {
     $filename = $args[1]
     $output    = "a.out"
     $assembler = @("./asm.py",     $filename, $output)
     $emulator  = @("./chip8.py",   $output)
     $disasm    = @("./disasm.py",  $output)
-
 
     del $output | Out-Null
     # $all = @($assembler, $emulator, $disasm)

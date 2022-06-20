@@ -12,3 +12,27 @@ test2.asm
 test.asm
 output.ch8
 asm/tparser.py
+asm_v1/__init__.py
+asm_v1/console.py
+asm_v1/lexer.py
+asm_v1/tparser - Copy.py
+asm_v1/tparser.py
+asm_v1/__pycache__/__init__.cpython-38.pyc
+asm_v1/__pycache__/__init__.cpython-310.pyc
+asm_v1/__pycache__/condition_if.cpython-38.pyc
+asm_v1/__pycache__/conditions.cpython-38.pyc
+asm_v1/__pycache__/console.cpython-38.pyc
+asm_v1/__pycache__/console.cpython-310.pyc
+asm_v1/__pycache__/errors.cpython-38.pyc
+asm_v1/__pycache__/labels.cpython-38.pyc
+asm_v1/__pycache__/lexer.cpython-38.pyc
+asm_v1/__pycache__/lexer.cpython-310.pyc
+asm_v1/__pycache__/macro.cpython-38.pyc
+asm_v1/__pycache__/tokenizer.cpython-38.pyc
+asm_v1/__pycache__/tokenizer.cpython-310.pyc
+asm_v1/__pycache__/tparser.cpython-38.pyc
+asm_v1/__pycache__/tparser.cpython-310.pyc
+asm/__pycache__/__init__.cpython-38.pyc
+asm/__pycache__/lexer.cpython-38.pyc
+asm/__pycache__/tokenizer.cpython-38.pyc
+asm/__pycache__/tparser.cpython-38.pyc
