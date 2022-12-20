@@ -12,7 +12,7 @@ class Display:
 
         self.toRender = False
 
-    def render(self, screen = None):
+    def render(self, screen = None) -> None:
         surface = self.screen if screen is None else screen
         for row in range(0, len(self.buffer)):
             for col in range(0, len(self.buffer[row])):

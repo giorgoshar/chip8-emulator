@@ -2,8 +2,7 @@ import sys
 import os.path
 import pygame
 import random
-from enum import Enum, auto
-from utils.console import console
+from enum import Enum
 from emulator import *
 
 os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (500, 300)
@@ -18,12 +17,12 @@ def dbgln(cond: bool, string: str) -> None:
 class Chip8:
     def __init__(self):
 
-        self.memory = Memory(0x1000)
-        self.cpu    = CPU()
-        self.video  = Display(screen)
+        self.memory   = Memory(0x1000)
+        self.cpu      = CPU()
+        self.video    = Display(screen)
         self.keyboard = Keyboard()
 
-        self.fontset: list[bytes] = [
+        self.fontset: list[int] = [
             0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
             0x20, 0x60, 0x20, 0x20, 0x70, # 1
             0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
@@ -42,9 +41,9 @@ class Chip8:
             0xF0, 0x80, 0xF0, 0x80, 0x80  # F
         ]
 
-        self.toRender: bool = False
+        self.toRender :bool = False
 
-    def load(self, filename):
+    def load(self, filename:str):
         self.reset()
         with open(filename, 'rb') as fp:
             rom = fp.read()
@@ -74,10 +73,10 @@ class Chip8:
     def run(self):
         clock    = pygame.time.Clock()
         running  = True
-        mem_scroll_y = 0x200
+        # mem_scroll_y = 0x200
         while running:
-            clock.tick(1000 / 60)
-            screen.fill((0, 0, 0))      
+            clock.tick(int(1000 / 60))
+            screen.fill((0, 0, 0))
             # keyboard events
             self.keyboard.handle()
             self.tick()
@@ -86,7 +85,7 @@ class Chip8:
             self.video.render()
             pygame.display.flip()
 
-    def execute(self, opcode):
+    def execute(self, opcode: int) -> None:
 
         ins = (opcode & 0xf000) >> 12
         x   = (opcode & 0x0f00) >> 8
@@ -144,14 +143,14 @@ class Chip8:
         else: exit(f'Failed to execute opcode: {hex(opcode)} (addr: 0x{self.cpu.pc:x})')
 
     # -- BEGIN MAIN OPERATIONS
-    def RND(self, x, kk):
+    def RND(self, x:int, kk:int):
         rnd = random.randint(0x0, 0xff)
         self.cpu.v[x] = rnd & kk
-    def JP(self, nnn):
+    def JP(self, nnn:int):
         self.cpu.pc = nnn
-    def ADD_VX(self, x, kk):
+    def ADD_VX(self, x:int, kk:int):
         self.cpu.v[x] = (self.cpu.v[x] + kk) & 0xff
-    def DRAW(self, x, y, nibble):
+    def DRAW(self, x:int, y:int, nibble:int):
         locX = self.cpu.v[x]
         locY = self.cpu.v[y]
         self.cpu.v[0xf] = 0x0
@@ -166,25 +165,25 @@ class Chip8:
                     self.video.buffer[ screenY ][ screenX ] ^= 1
                 sprite <<= 1
         self.toRender = True
-    def SE_Vx_kk(self, x, kk):
+    def SE_Vx_kk(self, x:int, kk:int):
         if self.cpu.v[x] == kk:
             self.cpu.pc += 2
-    def SE_Vx_Vy(self, x, y):
+    def SE_Vx_Vy(self, x:int, y:int):
         if self.cpu.v[x] == self.cpu.v[y]:
             self.cpu.pc += 2
-    def CALL(self, nnn):
+    def CALL(self, nnn:int):
         self.cpu.stack[ self.cpu.sp ] = self.cpu.pc
         self.cpu.sp += 1
         self.cpu.pc = nnn
-    def LD_I(self, nnn):
+    def LD_I(self, nnn:int):
         self.cpu.i = nnn
-    def SNE_Vx_kk(self, x, kk):
+    def SNE_Vx_kk(self, x:int, kk:int):
         if self.cpu.v[x] != kk:
             self.cpu.pc += 2
-    def SNE_Vx_Vy(self, x, y):
+    def SNE_Vx_Vy(self, x:int, y:int):
         if self.cpu.v[x] != self.cpu.v[y]:
             self.cpu.pc += 2
-    def LD_Vx_kk(self, x, kk):
+    def LD_Vx_kk(self, x:int, kk:int):
         self.cpu.v[x] = kk
     def CLS(self):
         self.video.clear()
@@ -194,43 +193,43 @@ class Chip8:
     # -- END MAIN OPERATIONS
 
     # -- BEGIN INPUT HANDLE
-    def SKP(self, x):
+    def SKP(self, x:int):
         if self.keyboard.keypad[x] == 1:
             self.cpu.pc += 2
-    def SKNP(self, x):
+    def SKNP(self, x:int):
         if self.keyboard.keypad[x] == 0:
             self.cpu.pc += 2
     # -- END INPUT HANDLE
 
     # -- BEGIN Logical Operatios
-    def lo_ld(self, x, y): self.cpu.v[x] = self.cpu.v[y]
-    def lo_or(self, x, y): self.cpu.v[x] |= self.cpu.v[y]
-    def lo_and(self, x, y): self.cpu.v[x] &= self.cpu.v[y]
-    def lo_xor(self, x, y): self.cpu.v[x] ^= self.cpu.v[y]
-    def lo_add(self, x, y):
+    def lo_ld(self, x:int, y:int): self.cpu.v[x] = self.cpu.v[y]
+    def lo_or(self, x:int, y:int): self.cpu.v[x] |= self.cpu.v[y]
+    def lo_and(self, x:int, y:int): self.cpu.v[x] &= self.cpu.v[y]
+    def lo_xor(self, x:int, y:int): self.cpu.v[x] ^= self.cpu.v[y]
+    def lo_add(self, x:int, y:int):
         if (self.cpu.v[x] + self.cpu.v[y]) > 0xff:
             self.cpu.v[0xf] = 1
         else:
             self.cpu.v[0xf] = 0
         self.cpu.v[x] = (self.cpu.v[x] + self.cpu.v[y]) & 0xff
-    def lo_sub(self, x, y):
-        self.cpu.v[0xf] = 1 if (self.cpu.v[x] > self.cpu.v[y]) else 0
+    def lo_sub(self, x:int, y:int):
         self.cpu.v[x]   = (self.cpu.v[x] - self.cpu.v[y]) & 0xff
-    def lo_subn(self, x, y):
-        self.cpu.v[0xf] = 1 if (self.cpu.v[y] > self.cpu.v[x]) else 0
+        self.cpu.v[0xf] = 1 if (self.cpu.v[x] > self.cpu.v[y]) else 0
+    def lo_subn(self, x:int, y:int):
         self.cpu.v[x]   = (self.cpu.v[y] - self.cpu.v[x]) & 0xff
-    def lo_shr(self, x, y):
+        self.cpu.v[0xf] = 1 if (self.cpu.v[y] > self.cpu.v[x]) else 0
+    def lo_shr(self, x:int, y:int):
         self.cpu.v[0xf] = self.cpu.v[x] & 0x1
         self.cpu.v[x]   = (self.cpu.v[x] >> 1) & 0xff
-    def lo_shl(self, x, y):
+    def lo_shl(self, x:int, y:int):
         self.cpu.v[0xf] = self.cpu.v[x] >> 7
         self.cpu.v[x]   = (self.cpu.v[x] << 1) & 0xff
     # -- END Logical Operations    
  
     # -- BEGIN Subroutine Operations
-    def LD_Vx_DT(self, x):
+    def LD_Vx_DT(self, x:int):
         self.cpu.v[x] = self.cpu.timer['delay']
-    def LD_Vx_K(self, x):
+    def LD_Vx_K(self, x:int):
         # wait for key to pressed
         pressed = False
         while not pressed:
@@ -239,22 +238,22 @@ class Chip8:
                 if self.keyboard.keypad[key] == 0x1:
                     self.cpu.v[x] = key
                     pressed = True   
-    def LD_B_Vx(self, x): # BCD
+    def LD_B_Vx(self, x:int): # BCD
         self.memory.write(self.cpu.i + 0, self.cpu.v[x] // 100)
         self.memory.write(self.cpu.i + 1, self.cpu.v[x] % 100 // 10)
         self.memory.write(self.cpu.i + 2, self.cpu.v[x] % 10)
-    def LD_DT_Vx(self, x):
+    def LD_DT_Vx(self, x:int):
         self.cpu.timer['delay'] = self.cpu.v[x]
-    def LD_ST_Vx(self, x):
+    def LD_ST_Vx(self, x:int):
         self.cpu.timer['sound'] = self.cpu.v[x]
-    def LD_F_Vx(self, x):
+    def LD_F_Vx(self, x:int):
         self.cpu.i = (self.cpu.v[x] * 0x5) & 0xff
-    def ADD_I_Vx(self, x):
+    def ADD_I_Vx(self, x:int):
         self.cpu.i += self.cpu.v[x]
-    def LD_I_Vx(self, x):
+    def LD_I_Vx(self, x:int):
         for counter in range(0, x + 1):
             self.memory.write(self.cpu.i + counter, self.cpu.v[counter])
-    def LD_Vx_I(self, x):
+    def LD_Vx_I(self, x:int):
         for counter in range(0, x + 1):
             self.cpu.v[counter] = self.memory.read(self.cpu.i + counter)
     # -- END  Subroutine Operations
@@ -268,8 +267,6 @@ class Window(pygame.Surface):
     def draw(self, screen: pygame.Surface, pos: tuple = None):
         r = pos if pos else self.rect
         screen.blit(self, r)
-    
-    def update(self): pass
 
 class Emulator:
 
@@ -296,8 +293,12 @@ class Emulator:
     def init(self):
         self.chip8.keyboard.keys[pygame.K_w] = 0x0
         self.chip8.keyboard.keys[pygame.K_s] = 0x1
+    
+    def reset(self):
+        self.chip8.cpu.reset()
+        self.chip8.memory.clear()
 
-    def run(self, romname):
+    def run(self, romname:str):
         self.chip8.load(romname)
         clock = pygame.time.Clock()
         while self.isRunning:
@@ -311,6 +312,8 @@ class Emulator:
                     if   event.key == pygame.K_F1: self.state = self.State.RUNNING
                     elif event.key == pygame.K_F2: self.state = self.State.PAUSED
                     elif event.key == pygame.K_F3: self.state = self.State.DEBUG
+                    elif event.key == pygame.K_r : 
+                        self.chip8.load(romname)
 
                     if event.key == pygame.K_n and self.state == self.State.DEBUG:
                         self.chip8.tick()
@@ -396,8 +399,6 @@ class Emulator:
         self.add_border(self.keyboardWindowView)
         self.keyboardWindowView.draw(self.screen, (300, 260))
     
-    def updateScreenWindow(self): pass
-
     def add_border(self, window, border_width = 1, color = (255, 255, 255)):
         box_width  = window.get_width()
         box_height = window.get_height()
@@ -433,7 +434,6 @@ if __name__ == "__main__":
             sys.exit(f'[__ERROR__] file {sys.argv[1]} doesnt exist')
     else: Usage()
     emulator = Emulator(screen)
-    # emulator.state = Emulator.State.DEBUG
     emulator.run(romname)
 
 pygame.quit()

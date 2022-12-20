@@ -4,6 +4,7 @@ import os.path
 import re
 from typing import *
 from utils.console import console
+
 from asm import lexer
 from asm import tparser
 
@@ -16,18 +17,14 @@ output   = sys.argv[2]
 if len(sys.argv) != 3: 
     exit(f"Usage: {sys.argv[0]} [filename]")
 
-console.info(f"Compiling: {filename}")
+source = lexer.Source(filename)
+lex    = lexer.Lexer(source)
+tokens = lex.tokenize(source.code)
 
-with open(filename, 'r') as sourcecode:
-    code = sourcecode.read()
+for token in tokens:
+    print(token)
 
-if not os.path.exists(filename):
-    console.error(f"file '{filename}' does not exist")
-
-lex = lexer.Lexer()
-tokens = lex.tokenize(code)
-
-parser = tparser.Parser(filename, code)
+parser = tparser.Parser(filename)
 binary = parser.parse(tokens)
 
 with open(output, 'wb') as fp:

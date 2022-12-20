@@ -1,4 +1,3 @@
-
 class console:
     @staticmethod
     def error(message :str) -> None:
@@ -15,7 +14,7 @@ class console:
         print(f"\033[1;32m[DONE] {message}\033[0m")
 
 if __name__ == "__main__":
+    console.error('Error')
     console.warn('Warning')
     console.info('Information')
     console.done('Done')
-    console.error('Error')

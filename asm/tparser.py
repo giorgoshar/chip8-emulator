@@ -1,22 +1,25 @@
-import re
-from typing import *
-from enum import Enum, auto
-from .tokenizer import *
+import sys
+sys.path.append('C:\\Users\\User\\Desktop\\Giorgos\\Dev\\emulators\\chip8')
+from typing        import Iterator
 from utils.console import console
+from asm.lexer     import *
+
+def to_bytes(value: int):
+    if type(value) is not int:
+        console.error('Value must be an integer')
+    return value.to_bytes(2, 'big')
 
 class Parser:
-    def __init__(self, filename: str, code: str):
-        self.filename: str = filename
-        self.tokens: Iterator[Token]
-        self.labels: list = []
-        self.output: list = []
-        self.binary: bytearray = bytearray()
+    def __init__(self, filename: str):
+        self.filename :str             = filename
+        self.tokens   :Iterator[Token] = iter([])
+        self.labels   :list[Label]     = []
+        self.binary   :bytearray       = bytearray()
 
-    def parse(self, tokens: List[Token]) -> bytearray:
+    def parse(self, tokens: list[Token]) -> bytearray:
         self.parse_labels(tokens)
         self.resolve_alias(tokens)
         self.tokens = iter(tokens)
-        
         for tok in self.tokens:
             if   tok.kind == TokenKind.DIRECTIVE:
                 if   tok.value == 'ascii':
@@ -27,7 +30,7 @@ class Parser:
                 elif tok.value == 'font':
                     tok = next(self.tokens)
                     self.expected([TokenKind.IDENTIFIER], tok)
-                    identifier = tok.value
+                    # identifier = tok.value
                     font_bytes = bytearray()
                     while True:
                         tok = next(self.tokens)
@@ -46,12 +49,12 @@ class Parser:
                     tok = next(self.tokens)
                     self.expected([TokenKind.NUMBER], tok)
                     number = self.parse_number(tok.value)
-                    self.binary.extend(number.to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes(number))
                 else: self.undefined(tok)
             elif tok.kind == TokenKind.INSTRUCTION:
 
                 if   tok.value == InstrKind.CLS:
-                    self.binary.extend(0x00E0.to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes(0x00E0))
                 elif tok.value == InstrKind.JMP:
                     tok = next(self.tokens)
                     self.expected([TokenKind.IDENTIFIER, TokenKind.NUMBER], tok)
@@ -66,7 +69,6 @@ class Parser:
                 elif tok.value == InstrKind.LOAD:
                     tok = next(self.tokens)
                     self.expected([TokenKind.REGISTER, TokenKind.INDEX], tok)
-                    
                     if tok.kind   == TokenKind.REGISTER:
                         Vx  = self.parse_register(tok.value)
                         tok = next(self.tokens)
@@ -82,7 +84,6 @@ class Parser:
                     elif tok.kind == TokenKind.INDEX:
                         tok = next(self.tokens)
                         self.expected([TokenKind.IDENTIFIER, TokenKind.NUMBER, TokenKind.REGISTER], tok)
-                        
                         if tok.kind == TokenKind.IDENTIFIER:
                             label  = self.find_label(tok)
                             addr   = self.parse_number(label['addr'])
@@ -94,7 +95,7 @@ class Parser:
                             Vx = self.parse_register(tok.value)
                             opcode = (0xF055 | (Vx << 8))
                     
-                    self.binary.extend(opcode.to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes(opcode))
 
                 elif tok.value == InstrKind.DRAW:
                     tok = next(self.tokens)
@@ -132,7 +133,7 @@ class Parser:
                         self.expected([TokenKind.REGISTER], tok)
                         Vx = self.parse_register(tok.value) & 0xf
                         opcode = (0xF01E | (Vx << 8))
-                    self.binary.extend(opcode.to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes(opcode))
                 elif tok.value == InstrKind.SUB:
                     tok = next(self.tokens)
                     self.expected([TokenKind.REGISTER], tok)
@@ -144,7 +145,7 @@ class Parser:
 
                     # 8xy5
                     opcode = 0x8005 | (Vx << 8) | (Vy << 4)
-                    self.binary.extend(opcode.to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes(opcode))
                 elif tok.value == InstrKind.SUBN:
                     tok = next(self.tokens)
                     self.expected([TokenKind.REGISTER], tok)
@@ -156,7 +157,7 @@ class Parser:
 
                     # 8xy7
                     opcode = 0x8007 | (Vx << 8) | (Vy << 4)
-                    self.binary.extend(opcode.to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes(opcode))
                 elif tok.value == InstrKind.SE:
                     
                     tok = next(self.tokens)
@@ -172,7 +173,7 @@ class Parser:
                     elif tok.kind == TokenKind.NUMBER:
                         number = self.parse_number(tok.value)
                         opcode = 0x3000 | (Vx << 8) |  ( number & 0x00ff)
-                    self.binary.extend(opcode.to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes(opcode))
                 elif tok.value == InstrKind.SNE:
                     
                     tok = next(self.tokens)
@@ -188,20 +189,20 @@ class Parser:
                     elif tok.kind == TokenKind.NUMBER:
                         number = self.parse_number(tok.value)
                         opcode = 0x4000 | (Vx << 8) |  ( number & 0x00ff)
-                    self.binary.extend(opcode.to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes(opcode))
 
                 elif tok.value == InstrKind.SKP:
                     tok = next(self.tokens)
                     self.expected([TokenKind.REGISTER, TokenKind.NUMBER], tok)
                     key = self.parse_number(tok.value) & 0xf
                     opcode = (0xE09E | (key << 8))
-                    self.binary.extend(opcode.to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes(opcode))
                 elif tok.value == InstrKind.SKNP:
                     tok = next(self.tokens)
                     self.expected([TokenKind.REGISTER, TokenKind.NUMBER], tok)
                     key = self.parse_number(tok.value) & 0xf
                     opcode = (0xE0A1 | (key << 8))
-                    self.binary.extend(opcode.to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes(opcode))
                 
                 elif tok.value == InstrKind.RAND:
                     tok = next(self.tokens)
@@ -212,7 +213,7 @@ class Parser:
                     self.expected([TokenKind.NUMBER], tok)
                     byte = self.parse_number(tok.value)
 
-                    self.binary.extend((0xC000 | (Vx  << 8) | (0x00ff & byte)).to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes((0xC000 | (Vx  << 8) | (0x00ff & byte))))
 
                 elif tok.value == InstrKind.CALL:
                     tok = next(self.tokens)
@@ -225,11 +226,14 @@ class Parser:
                         addr = self.parse_number(tok.value)
                     self.call(addr)
                 elif tok.value == InstrKind.RET:
-                    self.binary.extend(0x00EE.to_bytes(2, 'big'))
+                    self.binary.extend(to_bytes(0x00EE))
 
                 else: exit(f'Could not parse instruction {tok}')
             elif tok.kind == TokenKind.LABEL or tok.kind == TokenKind.EOF:
+                # console.error('Unreachable')
                 pass
+            elif tok.kind == TokenKind.IDENTIFIER:
+                console.error('Unimplemented')
             elif tok.kind == TokenKind.ALIAS:
                 next(self.tokens)
                 next(self.tokens)
@@ -237,11 +241,9 @@ class Parser:
             else: 
                 console.error(f"Unexpected Token: {tok}")
                 exit(1)
-
         self.expected([TokenKind.EOF], tok)
         return self.binary
-
-    def resolve_alias(self, tokens):
+    def resolve_alias(self, tokens: list[Token]):
         tokens_iter = iter(tokens)
         for tok in tokens_iter:
             if tok.kind == TokenKind.ALIAS:
@@ -258,8 +260,7 @@ class Parser:
 
                 for token in tokens:
                     print(token)
-
-    def parse_labels(self, tokens: List[Token]) -> List[Token]:
+    def parse_labels(self, tokens: list[Token]) -> list[Token]:
         tokens_iter = iter(tokens)
         pc = 0x200
         for tok in tokens_iter:
@@ -314,7 +315,6 @@ class Parser:
             'addr' : addr, 
             'token': token
         })
-
     def parse_ascii(self, value: str) -> bytearray:
         output: bytearray = bytearray()
         for i in range(len(value)):
@@ -333,18 +333,17 @@ class Parser:
         return int(value, 16) & 0xf
 
     def call(self, addr: int) -> None:
-        opcode = (0x2000 | (addr & 0x0FFF)).to_bytes(2, 'big')
+        opcode = to_bytes(0x2000 | (addr & 0x0FFF))
         self.binary.extend(opcode)
     def jmp(self, addr: int) -> None:
-        opcode = (0x1000 | (addr & 0x0FFF)).to_bytes(2, 'big')
+        opcode = to_bytes(0x1000 | (addr & 0x0FFF))
         self.binary.extend(opcode)
     def draw(self, x: int, y: int, nibble: int) -> None:
-        opcode = (0xD000 | (x << 8) | (y << 4) | (nibble << 0)).to_bytes(2, 'big')
+        opcode = to_bytes(0xD000 | (x << 8) | (y << 4) | (nibble << 0))
         self.binary.extend(opcode)
 
-    def expected(self, tokens: list, token: Token) -> bool:
+    def expected(self, tokens: list[TokenKind], token: Token) -> bool:
         assert isinstance(tokens, list)
-
         if token.kind not in tokens:
             line  = f"{self.filename}:{token.loc.line}:{token.loc.index + 1}"
             expd  = ' '.join(t.name for t in tokens)
@@ -355,8 +354,26 @@ class Parser:
         line  = f"{self.filename}:{token.loc.line}:{token.loc.index + 1}"
         error = f"Name '{token.value}' is not defined"
         exit(f"\033[4;36m{line}\033[0m \033[1;31m[ERROR]\033[0m {error}")
-    def redefinition(self, label: Dict[str, Token]) -> None:
+    def redefinition(self, label: dict[str, Token]) -> None:
         line  = f"{self.filename}:{label['token'].loc.line}:{label['token'].loc.index + 1}"
         error = f"redifinition of '{label['token'].value}'"
         exit(f"\033[4;36m{line}\033[0m \033[1;31m[ERROR]\033[0m {error}")
 
+if __name__ == '__main__':
+    codetest:str = """
+        jmp main
+        .ascii "Hello"
+        main:
+            add  v8  0x1
+            add  v9  0x1
+            load [I] 0
+        inf: jmp inf
+    """
+    lexer  = Lexer()
+    tokens = lexer.tokenize(codetest)
+    for token in tokens:
+        print(token)
+    parser = Parser("test")
+    binary = parser.parse(tokens)
+
+    print(binary)

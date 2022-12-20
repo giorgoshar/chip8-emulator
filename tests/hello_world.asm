@@ -1,4 +1,4 @@
-.org 0x200
+.ascii "HelloWorld"
 jmp main
 main:
     load v1, 0

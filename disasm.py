@@ -1,7 +1,6 @@
-import os
 import sys
 
-def disasm(opcode):
+def disasm(opcode:int):
     ins = (opcode & 0xf000) >> 12
     x   = (opcode & 0x0f00) >> 8
     y   = (opcode & 0x00f0) >> 4
@@ -9,7 +8,8 @@ def disasm(opcode):
     kk  =  opcode & 0x00ff
     nnn =  opcode & 0x0fff
 
-    if   ins == 0x0 and (opcode & 0xff) == 0xe0: return "CLS"
+    if   ins == 0x0 and (opcode & 0xff) == 0x00: return "0x00 0x00; NOP"
+    elif ins == 0x0 and (opcode & 0xff) == 0xe0: return "CLS"
     elif ins == 0x0 and (opcode & 0xff) == 0xee: return "RET"
     elif ins == 0x1: dissasmStr = f'JMP    0x{nnn:x}'
     elif ins == 0x2: dissasmStr = f'CALL   0x{nnn:x}'
@@ -48,7 +48,8 @@ def disasm(opcode):
     elif ins == 0xf and (opcode & 0xff) == 0x65: dissasmStr = f'LOAD   V{x:x}, [I]'
     elif ins == 0xf and (opcode & 0xff) == 0x29: dissasmStr = f'LOAD   F,  V{x:x}'
     elif ins == 0xf and (opcode & 0xff) == 0x33: dissasmStr = f'LOAD   B,  V{x:x}'
-    else: dissasmStr = f'HEX    0x{opcode:<04x}'
+
+    else: dissasmStr = f'{opcode:<04x} ; HEX    0x{opcode:<04x}'
     return dissasmStr
 
 if __name__ == '__main__':
@@ -56,10 +57,15 @@ if __name__ == '__main__':
     rom = bytearray()
     with open(filename, 'rb') as fileb:
         rom = bytearray(fileb.read())
-    
+
+    outbuffer = ""
     pc = 0x0
     while pc < len(rom):
         opcode = (rom[pc] << 8) | rom[pc + 1]
         instr  = disasm(opcode)
-        print(hex(pc + 0x200), hex(opcode), instr)
+        print(instr)
         pc += 2
+        outbuffer += instr + "\n"
+    
+    with open(filename + "_t.asm", 'w') as filew:
+        filew.write(outbuffer)

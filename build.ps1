@@ -1,5 +1,5 @@
+$SCRIPT_NAME = $MyInvocation.MyCommand.Name
 function Usage {
-    $SCRIPT_NAME = $MyInvocation.MyCommand.Name
     Write-Host "Usage: $($SCRIPT_NAME) [COMMAND] [ARGS]"
     Write-Host "       comp [filename] the path of file"
     Write-Host "            [output]   output file, default is 'a.o'"
@@ -44,14 +44,32 @@ if($args[0] -eq 'testcases') {
             }
         }
     }
+
+    if($args[1] -eq 'pytests') {
+        $files = Get-ChildItem ".\tests\"
+        foreach ($file in $files){
+            # $file | Select-Object -Property *
+            if($file.Extension -eq '.py') {
+                powershell -command "& py $($file.FullName)"
+            }
+        }
+    }
+}
+elseif($args[0] -eq 'comp') {
+    $filename = $args[1]
+    $output    = "a.out"
+    $assembler = @("./asm.py", $filename, $output)
+    & 'py' $assembler
 }
 elseif($args[0] -eq 'run') {
     $filename = $args[1]
     $output    = "a.out"
-    $assembler = @("./asm.py",    $filename, $output)
-    $emulator  = @("./chip8.py",  $output)
+    $assembler = @("./asm.py",     $filename, $output)
+    $emulator  = @("./chip8.py",   $output)
+    $disasm    = @("./disasm.py",  $output)
 
     del $output | Out-Null
+    # $all = @($assembler, $emulator, $disasm)
     $all = @($assembler, $emulator)
 
     foreach ($build in $all) {
@@ -59,7 +77,8 @@ elseif($args[0] -eq 'run') {
         & 'py' $build
     }
 }
+elseif($args[0] -eq 'hex') {
+    $filename = $args[1]
+    Get-Content $filename -Encoding byte | Format-Hex
+}
 else { Usage }
-
-# Some other useful commands
-# py .\disasm.py .\output.ch8  | Out-File -FilePath .\test1.asm -Encoding ASCII

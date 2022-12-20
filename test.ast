@@ -1,0 +1,42 @@
+
+TranslationUnit 
+|--VariableAndOrFunctionDeclaration  <53:2161..53:2170>  `int a = 1;`
+|  |--BuiltinTypeSpecifier  <53:2161..53:2163>  `int`
+|  |--IdentifierDeclarator  <53:2165..53:2169>  `a = 1`
+|     |--ExpressionInitializer  <53:2169..53:2169>  `1`
+|        |--IntegerConstantExpression  <53:2169..53:2169>  `1`
+|--VariableAndOrFunctionDeclaration  <54:2172..54:2181>  `int b = a;`
+|  |--BuiltinTypeSpecifier  <54:2172..54:2174>  `int`
+|  |--IdentifierDeclarator  <54:2176..54:2180>  `b = a`
+|     |--ExpressionInitializer  <54:2180..54:2180>  `a`
+|        |--IdentifierName  <54:2180..54:2180>  `a`
+|--VariableAndOrFunctionDeclaration  <55:2183..55:2198>  `int v, f(int d);`
+|  |--BuiltinTypeSpecifier  <55:2183..55:2185>  `int`
+|  |--IdentifierDeclarator  <55:2187..55:2187>  `v`
+|  |--FunctionDeclarator  <55:2190..55:2191>  `f(`
+|     |--IdentifierDeclarator  <55:2190..55:2190>  `f`
+|     |--ParameterSuffix  <55:2191..55:2197>  `(int d)`
+|        |--ParameterDeclaration  <55:2192..55:2196>  `int d`
+|           |--BuiltinTypeSpecifier  <55:2192..55:2194>  `int`
+|           |--IdentifierDeclarator  <55:2196..55:2196>  `d`
+|--FunctionDefinition  <56:2200..56:2212>  `int f(int p){`
+   |--BuiltinTypeSpecifier  <56:2200..56:2202>  `int`
+   |--FunctionDeclarator  <56:2204..56:2205>  `f(`
+   |  |--IdentifierDeclarator  <56:2204..56:2204>  `f`
+   |  |--ParameterSuffix  <56:2205..56:2211>  `(int p)`
+   |     |--ParameterDeclaration  <56:2206..56:2210>  `int p`
+   |        |--BuiltinTypeSpecifier  <56:2206..56:2208>  `int`
+   |        |--IdentifierDeclarator  <56:2210..56:2210>  `p`
+   |--CompoundStatement  <56:2212..60:2251>  `{ if (p == v) return(p - 1); r...`
+      |--IfStatement  <57:2214..58:2231>  `if (p == v) return`
+      |  |--EqualsExpression  <57:2218..57:2223>  `p == v`
+      |  |  |--IdentifierName  <57:2218..57:2218>  `p`
+      |  |  |--IdentifierName  <57:2223..57:2223>  `v`
+      |  |--ReturnStatement  <58:2226..58:2239>  `return(p - 1);`
+      |     |--ParenthesizedExpression  <58:2232..58:2238>  `(p - 1)`
+      |        |--SubstractExpression  <58:2233..58:2237>  `p - 1`
+      |           |--IdentifierName  <58:2233..58:2233>  `p`
+      |           |--IntegerConstantExpression  <58:2237..58:2237>  `1`
+      |--ReturnStatement  <59:2241..59:2249>  `return 0;`
+         |--IntegerConstantExpression  <59:2248..59:2248>  `0`
+

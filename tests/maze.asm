@@ -18,8 +18,8 @@ loop:
     add  v1, 4
     se   v1, 32
     jmp  loop
-end:
-    jmp end
+inf:
+    jmp inf
 
 .font RIGHT 0x80 0x40 0x20 0x10 0x0, endfont
 .font LEFT  0x10 0x20 0x40 0x80 0x0, endfont
