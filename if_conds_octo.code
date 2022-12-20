@@ -1,8 +1,3 @@
-# Chip8 is a virtual machine designed in 1977 for programming video games.
-# Octo is a high level assembler, disassembler and simulator for Chip8.
-# Click 'Run' and then press ASWD to move the sprite around the screen.
-# Click the Octo logo for source, documentation and examples.
-
 v1 := 11
 v2 := 22
 : main

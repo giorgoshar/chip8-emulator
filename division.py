@@ -23,7 +23,6 @@ def divide(N, D):
 print(divide(10, 2))
 print(divide(10, 3))
 
-
 def division2(x, y):
     q = 0
     while x >= y:

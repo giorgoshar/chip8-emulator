@@ -7,32 +7,29 @@ from utils.console import console
 
 from asm import lexer
 from asm import tparser
-from asm import compiler
 
+if len(sys.argv) < 3:
+    exit('asm args error')
 
-def main():
-    if len(sys.argv) < 3:
-        exit('asm args error')
+filename = sys.argv[1]
+output   = sys.argv[2]
 
-    filename = sys.argv[1]
-    output   = sys.argv[2]
+if len(sys.argv) != 3: 
+    exit(f"Usage: {sys.argv[0]} [filename]")
 
-    if len(sys.argv) != 3: 
-        exit(f"Usage: {sys.argv[0]} [filename]")
+source = lexer.Source(filename)
+lex    = lexer.Lexer(source)
+tokens = lex.tokenize(source.code)
 
-    with open(filename, 'r') as sourcecode:
-        code = sourcecode.read()
+for token in tokens:
+    print(token)
 
-    if not os.path.exists(filename):
-        console.error(f"file '{filename}' does not exist")
+parser = tparser.Parser(filename)
+binary = parser.parse(tokens)
 
-    lex    = lexer.Lexer(code)
-    parser = tparser.Parser(lex, filename)
-    ast    = parser.parse()
-    
-    assembler = compiler.Compiler(ast)
-    assembler.compile()
+with open(output, 'wb') as fp:
+    fp.write(binary)
 
-if __name__ == '__main__':
-    main()
-
+fullpath = os.getcwd() + output
+console.info(f"bin : {fullpath}")
+console.info(f"size: {len(binary)}bytes")

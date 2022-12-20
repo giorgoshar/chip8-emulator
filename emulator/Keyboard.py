@@ -3,7 +3,7 @@ import sys
 
 class Keyboard:
     def __init__(self):
-        self.keys: dict[int] = {
+        self.keys: dict[int: int] = {
             pygame.K_0: 0x0,
             pygame.K_1: 0x1,
             pygame.K_2: 0x2,

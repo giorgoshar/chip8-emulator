@@ -1,34 +1,38 @@
+import os
+import sys
+sys.path.append('C:\\Users\\User\\Desktop\\Giorgos\\Dev\\emulators\\chip8')
+
 import re
-from typing import *
+from typing import Any
 from enum import Enum, auto
 from dataclasses import dataclass
-from collections import namedtuple
+from utils.console import console
 
-Loc = namedtuple('Loc', ['line', 'index'])
+@dataclass
+class Loc:
+    line  :int = 0
+    index :int = 0
+    def __str__(self) -> str:
+        return f"@Loc({self.line}:{self.index})"
 
 class TokenKind(Enum):
     NEWLINE     = auto()
     NUMBER      = auto()
-    ASSIGN      = auto()
-    END         = auto()
     STRING      = auto()
     REGISTER    = auto()
     INDEX       = auto()
     LABEL       = auto()
     DIRECTIVE   = auto()
     INSTRUCTION = auto()
-    STATEMENT   = auto()
-    KEYWORD     = auto()
     SKIP        = auto()
     COMMA       = auto()
     COMMENT     = auto()
     ERROR       = auto()
     OPERATOR    = auto()
     IDENTIFIER  = auto()
-    OBRACKET    = auto()
-    CBRACKET    = auto()
     ALIAS       = auto()
-    FUNC        = auto()
+    STATEMENT   = auto()
+    ASSIGN      = auto()
     BINOP       = auto()
     EOF         = auto()
     INVALID     = auto()
@@ -64,21 +68,17 @@ class BinOpKind(Enum):
     LEQ     = auto()
     GEQ     = auto()
     ERROR   = auto()
+class TokenType(Enum):
+    u8  = auto()
+    u16 = auto()
 
 @dataclass
 class Token: 
     kind : TokenKind
     value: Any
     loc  : Loc
-    
     def __str__(self):
         return f'{self.kind:30} {self.value:<20} Location:{self.loc}'
-    
-    def __eq__(self, kind: TokenKind):
-        return self.kind == kind
-    
-    def __ne__(self, kind: TokenKind):
-        return self.kind != kind
 
 @dataclass
 class Label:
@@ -86,17 +86,33 @@ class Label:
     addr : int
     token: Token
 
-class Lexer:
-    keywords: list = ['jmp', 'call', 'ret', 'cls', 'load', 'draw', 'skp', 'sknp', 
-                      'add', 'rand', 'se', 'sne', 'sub', 'subn', 
-                      'if', 'else', 'elif', 'end', 'begin', 'func']
-    def __init__(self, code:str = ""):
-        self.tokens: list  = []
-        self.index:  int   = 0
-        
-        if code != "": 
-            self.tokenize(code)
+class Source:
+    def __init__(self, filename: str = ""):
+        self.filename :str = filename
+        self.code     :str = ""
+        if self.filename != "":
+            self.read()
     
+    def read(self, filename: str = ""):
+        if filename: 
+            self.filename = filename
+        if not os.path.exists(self.filename):
+            console.error(f"file '{self.filename}' does not exist")
+        with open(self.filename, 'r') as fp:
+            self.code = fp.read()
+        return self.code
+
+class Lexer:
+    keywords: list[str] = [
+        'jmp', 'call', 'ret', 'cls', 'load', 'draw', 'skp', 'sknp', 
+        'add', 'rand', 'se', 'sne', 'sub', 'subn',
+    ]
+    
+    def __init__(self, source: Source):
+        self.source :Source       = source
+        self.tokens :list[Token]  = []
+        self.index  :int          = 0
+
     def next(self) -> Token:
         if not self.has_more():
             return self.set_invalid_token()
@@ -106,8 +122,7 @@ class Lexer:
     def peek(self) -> Token:
         return self.tokens[self.index]
 
-    def eat(self, kind:List[TokenKind]) -> Token:
-        
+    def eat(self, kind:list[TokenKind]) -> Token:
         if not self.has_more():
             return self.set_invalid_token()
 
@@ -134,26 +149,25 @@ class Lexer:
     def __iter__(self):
         return iter(self.tokens)
     
-    def tokenize(self, code: str) -> List[Token]:
+    def tokenize(self, code: str) -> list[Token]:
         token_specification = [
-            ('END',        r';'),                         # Match END `;`
-            ('NUMBER',     r'0[xX][0-9a-fA-F]+|[0-9]+'),  # Integer or decimal number
-            ('ASSIGN',     r':='),                        # Match Assignmentr `:=`
-            ('STRING',     r'\".*\"'),                    # Match string inside quotation and ""
-            ('REGISTER',   r'[v|V]([0-9a-fA-F]+)'),       # Match v1-vf registers
-            ('REG_I',      r'\[I\]'),                     # match `i` register
-            ('LABEL',      r'[A-Za-z0-9_]+\:'),           # Match Labels
-            ('ID',         r'[A-Za-z0-9_]+'),             # Identifiers
-            ('OP',         r'[>=]{2}|[<=]{2}|[+\-*<>]'),  # Arithmetic/Unary operators
-            ('NEWLINE',    r'\n'),                        # Line endings
-            ('SKIP',       r'[ \t]+'),                    # Skip over spaces and tabs
-            ('DIRECTIVE',  r'\.[A-Za-z0-9]+'),            # Match directive
-            ('COMMA',      r'\,'),                        # Match comma
-            ('COMMENT',    r'#.*'),                       # Match comments
-            ('ALIAS',      r'%alias'),                    # Match alias
-            ('OBRACKET',   r'{'),                         # Match { Open  bracket
-            ('CBRACKET',   r'}'),                         # Match } close bracket
-            ('MISMATCH',   r'.'),                         # Any other character
+            ('NUMBER',   r'0[xX][0-9a-fA-F]+|[0-9]+'),  # Integer or decimal number
+            ('STRING',   r'\".*\"'),                    # Match string inside quotation and ""
+            ('REGISTER', r'[v|V]([0-9a-fA-F]+)'),       # Match v1-vf registers
+            ('REG_I',    r'\[I\]'),                     # match `i` register
+            ('LABEL',    r'[A-Za-z0-9_]+\:'),           # Match Labels
+            ('ID',       r'[A-Za-z0-9_]+'),             # Identifiers
+            ('OP',       r'[>=]{2}|[<=]{2}|[+\-*<>]'),  # Arithmetic/Unary operators
+            ('NEWLINE',  r'\n'),                        # Line endings
+            ('SKIP',     r'[ \t]+'),                    # Skip over spaces and tabs
+            ('DIRECTIVE',r'\.[A-Za-z0-9]+'),            # Match directive
+            ('COMMA',    r'\,'),                        # Match comma
+            ('COMMENT',  r';.*'),                       # Match comments
+            ('ALIAS',    r'%alias'),                    # Match alias
+            ('ASSIGN',   r':='),                        # Match := assignment operator
+            ('OBRACKET', r'{'),                         # Match { Open  bracket
+            ('CBRACKET', r'}'),                         # Match } close bracket
+            ('MISMATCH', r'.'),                         # Any other character
         ]
         tok_regex  = '|'.join(r'(?P<%s>%s)' % pair for pair in token_specification)
         line_num   = 1
@@ -163,11 +177,8 @@ class Lexer:
             value    = mo.group()
             column   = mo.start() - line_start
             location = Loc(line_num, column)
-            
             match kind:
-                case 'END':       self.tokens.append(Token(TokenKind.END,       value, location))
-                case 'NUMBER':    self.tokens.append(Token(TokenKind.NUMBER,    value, location))
-                case 'ASSIGN':    self.tokens.append(Token(TokenKind.ASSIGN,    value, location))
+                case 'NUMBER':    self.tokens.append(Token(TokenKind.NUMBER,    value,      location))
                 case 'STRING':    self.tokens.append(Token(TokenKind.STRING,    value[1:-1],location))
                 case 'OP':        self.tokens.append(Token(TokenKind.OPERATOR,  self.tokenize_binop(value),      location))
                 case 'LABEL':     self.tokens.append(Token(TokenKind.LABEL,     value[:-1], location))
@@ -175,21 +186,20 @@ class Lexer:
                 case 'REGISTER':  self.tokens.append(Token(TokenKind.REGISTER,  value[1:],  location))
                 case 'REG_I':     self.tokens.append(Token(TokenKind.INDEX,     value,      location))    
                 case 'ID':
-                    if value.lower() == 'func':
-                        token = Token(TokenKind.FUNC, value, location)
-                    elif value.lower() in self.keywords:
-                        token = Token(TokenKind.INSTRUCTION, self.tokenize_instr(value.upper()), location)
+                    if value.lower() in self.keywords:
+                        self.tokens.append(Token(TokenKind.INSTRUCTION, self.tokenize_instr(value.upper()), location))
                     else:
-                        token = Token(TokenKind.IDENTIFIER, value, location)
-                    self.tokens.append(token)
+                        self.tokens.append(Token(TokenKind.IDENTIFIER, value, location))
+                case 'ASSIGN':    self.tokens.append(Token(TokenKind.ASSIGN,    value, location))
                 case 'ALIAS':     self.tokens.append(Token(TokenKind.ALIAS,     value, location))
-                case 'OBRACKET': self.tokens.append(Token(TokenKind.OBRACKET, value, location))
-                case 'CBRACKET': self.tokens.append(Token(TokenKind.CBRACKET, value, location))
+                case 'STATEMENT': self.tokens.append(Token(TokenKind.STATEMENT, value, location))
                 case 'NEWLINE':   line_start = mo.end(); line_num += 1
                 case 'SKIP', 'COMMA', 'COMMENT': continue
-                case 'MISMATCH': exit(f'Unexpected token `{value!r}` at line {line_num}, index:{column}')
+                case 'MISMATCH': 
+                    print(f"\033[4;36m{self.source.filename}:{line_num}:{column}\033[0m \033[1;31m[ERROR]\033[0m Invalid token")
+                    exit(1)
 
-        self.tokens.append(Token(TokenKind.EOF, '\\0', location))
+        self.tokens.append(Token(TokenKind.EOF, '\\0', Loc(line_num, line_start)))
         self.token = self.tokens[self.index]
         return self.tokens
 
@@ -215,6 +225,7 @@ class Lexer:
         if keyword == 'ELSE' : return StmtKind.ELSE
         if keyword == 'END'  : return StmtKind.END
         if keyword == 'BEGIN': return StmtKind.BEGIN
+
         return StmtKind.ERROR
     
     def tokenize_binop(self, keyword: str) -> BinOpKind:
@@ -226,17 +237,8 @@ class Lexer:
         return BinOpKind.ERROR
 
 if __name__ == '__main__':
-    code:str = """
-        jmp main
-        .ascii "Hello"
-        main:
-            add  v8  0x1
-            add  v9  0x1
-            load [I] 0
-    """
-    lexer = Lexer(code)
-    while(lexer.peek().kind != TokenKind.EOF):
-        print(lexer.peek())
-        if lexer.token.kind == TokenKind.INVALID:
-            break
-        lexer.next()
+    code:str = "jmp main"
+    lex    = Lexer()
+    tokens = lex.tokenize(code)
+    for token in tokens:
+        print(token)

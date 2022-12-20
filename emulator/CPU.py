@@ -1,15 +1,15 @@
 class CPU:
     def __init__(self):
-        self.v: list[int] = [0] * 16
-        self.i: int = 0
+        self.v :list[int] = [0] * 16
+        self.i :int = 0
         self.sp:int = 0
         self.pc:int = 0x200
 
-        self.stack:  int = [0] * 16
-        self.cycle:  int = 0
-        self.opcode: int = 0x0
+        self.stack  :list[int] = [0] * 16
+        self.cycle  :int = 0
+        self.opcode :int = 0x0
 
-        self.timer:  dict[str, str]  = {'delay': 0,'sound': 0}
+        self.timer  :dict[str, int]  = {'delay': 0,'sound': 0}
 
     def reset(self): self = CPU()
 

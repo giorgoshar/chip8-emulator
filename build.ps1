@@ -44,6 +44,16 @@ if($args[0] -eq 'testcases') {
             }
         }
     }
+
+    if($args[1] -eq 'pytests') {
+        $files = Get-ChildItem ".\tests\"
+        foreach ($file in $files){
+            # $file | Select-Object -Property *
+            if($file.Extension -eq '.py') {
+                powershell -command "& py $($file.FullName)"
+            }
+        }
+    }
 }
 elseif($args[0] -eq 'comp') {
     $filename = $args[1]
@@ -67,7 +77,8 @@ elseif($args[0] -eq 'run') {
         & 'py' $build
     }
 }
+elseif($args[0] -eq 'hex') {
+    $filename = $args[1]
+    Get-Content $filename -Encoding byte | Format-Hex
+}
 else { Usage }
-
-# Some other useful commands
-# py .\disasm.py .\output.ch8  | Out-File -FilePath .\test1.asm -Encoding ASCII

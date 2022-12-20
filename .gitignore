@@ -36,3 +36,16 @@ asm/__pycache__/__init__.cpython-38.pyc
 asm/__pycache__/lexer.cpython-38.pyc
 asm/__pycache__/tokenizer.cpython-38.pyc
 asm/__pycache__/tparser.cpython-38.pyc
+emulator/__pycache__/Memory.cpython-310.pyc
+emulator/__pycache__/CPU.cpython-310.pyc
+emulator/__pycache__/Display.cpython-310.pyc
+emulator/__pycache__/Keyboard.cpython-310.pyc
+emulator/__pycache__/__init__.cpython-310.pyc
+utils/__pycache__/__init__.cpython-310.pyc
+utils/__pycache__/console.cpython-310.pyc
+c8/__pycache__/tparser.cpython-310.pyc
+c8/__pycache__/lexer.cpython-310.pyc
+c8/__pycache__/errors.cpython-310.pyc
+c8/__pycache__/console.cpython-310.pyc
+c8/__pycache__/ast.cpython-310.pyc
+c8/__pycache__/parser.cpython-310.pyc

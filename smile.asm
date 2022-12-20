@@ -2,6 +2,7 @@
 jmp    main
 .ascii  "GREET.ASM, Copyright 2014 Boro Sitnikovski"
 main:
+
 SMILE:
     ; x position
     load    v1, 5
