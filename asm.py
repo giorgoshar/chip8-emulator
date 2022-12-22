@@ -1,8 +1,6 @@
 import sys
 import os
 import os.path
-import re
-from typing import *
 from utils.console import console
 
 from asm import lexer

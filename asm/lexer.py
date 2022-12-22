@@ -92,6 +92,8 @@ class Source:
         self.code     :str = ""
         if self.filename != "":
             self.read()
+    def set_code(self, code:str) -> None:
+        self.code = code
     
     def read(self, filename: str = ""):
         if filename: 
@@ -101,6 +103,7 @@ class Source:
         with open(self.filename, 'r') as fp:
             self.code = fp.read()
         return self.code
+
 
 class Lexer:
     keywords: list[str] = [
@@ -194,9 +197,9 @@ class Lexer:
                 case 'ALIAS':     self.tokens.append(Token(TokenKind.ALIAS,     value, location))
                 case 'STATEMENT': self.tokens.append(Token(TokenKind.STATEMENT, value, location))
                 case 'NEWLINE':   line_start = mo.end(); line_num += 1
-                case 'SKIP', 'COMMA', 'COMMENT': continue
-                case 'MISMATCH': 
-                    print(f"\033[4;36m{self.source.filename}:{line_num}:{column}\033[0m \033[1;31m[ERROR]\033[0m Invalid token")
+                case 'SKIP' | 'COMMA' | 'COMMENT': continue
+                case 'MISMATCH' | _: 
+                    print(f"\033[4;36m{self.source.filename}:{line_num}:{column}\033[0m \033[1;31m[ERROR]\033[0m Invalid token {kind}")
                     exit(1)
 
         self.tokens.append(Token(TokenKind.EOF, '\\0', Loc(line_num, line_start)))
@@ -235,10 +238,3 @@ class Lexer:
         if keyword == '<' : return BinOpKind.LESS
         
         return BinOpKind.ERROR
-
-if __name__ == '__main__':
-    code:str = "jmp main"
-    lex    = Lexer()
-    tokens = lex.tokenize(code)
-    for token in tokens:
-        print(token)

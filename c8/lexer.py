@@ -69,7 +69,6 @@ class DirectiveKind(Flag):
     MEM   = auto()
     ASCII = auto()
     FONT  = auto()
-
 class TokenType(Flag):
     u8  = auto()
     u16 = auto()
@@ -121,8 +120,8 @@ class Tokenizer:
     keywords :list[str] = ['fn' , 'int8', 'int16', 'if' , 'elif', 'else']
 
     def __init__(self, source: Source): 
-        self.tokens :list[Token]  = []
-        self.source : Source      = source
+        self.tokens :list[Token] = []
+        self.source :Source      = source
 
     def tokenize(self, code: str) -> list[Token]:
         token_specification = [

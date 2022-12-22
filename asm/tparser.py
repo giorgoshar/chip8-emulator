@@ -61,7 +61,7 @@ class Parser:
 
                     if tok.kind == TokenKind.IDENTIFIER:
                         label = self.find_label(tok)
-                        addr  = self.parse_number(label['addr'])
+                        addr  = self.parse_number(label.addr)
                     if tok.kind == TokenKind.NUMBER:
                         addr = self.parse_number(tok.value)
                     self.jmp(addr)
@@ -86,7 +86,7 @@ class Parser:
                         self.expected([TokenKind.IDENTIFIER, TokenKind.NUMBER, TokenKind.REGISTER], tok)
                         if tok.kind == TokenKind.IDENTIFIER:
                             label  = self.find_label(tok)
-                            addr   = self.parse_number(label['addr'])
+                            addr   = self.parse_number(label.addr)
                             opcode = (0xA000 | addr)
                         elif tok.kind == TokenKind.NUMBER:
                             addr = self.parse_number(tok.value) & 0xfff
@@ -221,7 +221,7 @@ class Parser:
 
                     if tok.kind == TokenKind.IDENTIFIER:
                         label = self.find_label(tok)
-                        addr  = self.parse_number(label['addr'])
+                        addr  = self.parse_number(label.addr)
                     if tok.kind == TokenKind.NUMBER:
                         addr = self.parse_number(tok.value)
                     self.call(addr)
@@ -239,7 +239,7 @@ class Parser:
                 next(self.tokens)
                 continue
             else: 
-                console.error(f"Unexpected Token: {tok}")
+                print(f"\033[4;36m{self.filename}:{tok.loc.line}:{tok.loc.index}\033[0m \033[1;31m[ERROR]\033[0m Invalid token {tok}")
                 exit(1)
         self.expected([TokenKind.EOF], tok)
         return self.binary
@@ -300,7 +300,7 @@ class Parser:
         return self.labels
     def find_label(self, token: Token, report: bool = True):
         for label in self.labels:
-            if label['token'].value == token.value:
+            if label.token.value == token.value:
                 return label
         if report is True:
             self.undefined(token)
@@ -311,10 +311,11 @@ class Parser:
         label = self.find_label(token, False)
         if label is not None: 
             self.redefinition(label)
-        self.labels.append({
-            'addr' : addr, 
-            'token': token
-        })
+        self.labels.append(Label(token.value, addr, token))
+        # self.labels.append({
+        #     'addr' : addr, 
+        #     'token': token
+        # })
     def parse_ascii(self, value: str) -> bytearray:
         output: bytearray = bytearray()
         for i in range(len(value)):
@@ -354,9 +355,9 @@ class Parser:
         line  = f"{self.filename}:{token.loc.line}:{token.loc.index + 1}"
         error = f"Name '{token.value}' is not defined"
         exit(f"\033[4;36m{line}\033[0m \033[1;31m[ERROR]\033[0m {error}")
-    def redefinition(self, label: dict[str, Token]) -> None:
-        line  = f"{self.filename}:{label['token'].loc.line}:{label['token'].loc.index + 1}"
-        error = f"redifinition of '{label['token'].value}'"
+    def redefinition(self, label: Label) -> None:
+        line  = f"{self.filename}:{label.token.loc.line}:{label.token.loc.index + 1}"
+        error = f"redifinition of '{label.token.value}'"
         exit(f"\033[4;36m{line}\033[0m \033[1;31m[ERROR]\033[0m {error}")
 
 if __name__ == '__main__':

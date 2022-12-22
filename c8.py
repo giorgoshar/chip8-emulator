@@ -39,6 +39,10 @@ class Assembler:
             return f"<OpcodeInstruction({self.opcode}, {self.value})>"
 
     @staticmethod
+    def make_instr_cls(node :ast.ASTNode) -> OpcodeInstruction:
+        return Assembler.OpcodeInstruction(None, f"CLS")
+
+    @staticmethod
     def make_instr_jmp(node :ast.ASTNode) -> OpcodeInstruction:
         VERIFY_LEN(node.body, 1)
         return Assembler.OpcodeInstruction(None, f"JMP __LABEL_{node.body[0]}")
@@ -52,10 +56,15 @@ class Assembler:
             Vx  = parse_register(node.body[0].value)
             num = parse_number(node.body[1].value)
             opcode = (0x6000 | (Vx << 8) | ( num & 0x00ff))
-            print(f"LOAD v{node.body[0].value}, {node.body[1].value}", hex(opcode))
             return Assembler.OpcodeInstruction(to_bytes(opcode), f"LOAD v{node.body[0].value}, {node.body[1].value}")
+        elif args == (lexer.TokenKind.REGISTER | lexer.TokenKind.REGISTER):
+            Vx  = parse_register(node.body[0].value)
+            Vy  = parse_register(node.body[1].value)
+            opcode = (0x6000 | (Vx << 8) | ( Vy & 0x00ff))
+            return Assembler.OpcodeInstruction(to_bytes(opcode), f"LOAD v{node.body[0].value}, v{node.body[1].value}")
         elif args == (lexer.TokenKind.INDEX | lexer.TokenKind.IDENTIFIER):
-            print(f"LOAD [I], {node.body[1].value}")
+            return Assembler.OpcodeInstruction(None, f"LOAD [I], {node.body[1].value}")
+        elif args == (lexer.TokenKind.INDEX | lexer.TokenKind.NUMBER):
             return Assembler.OpcodeInstruction(None, f"LOAD [I], {node.body[1].value}")
         else: errors.Unreachable(f"{node}") 
 
@@ -66,6 +75,10 @@ class Assembler:
         args = node.body[0].kind | node.body[1].kind
         if args == (lexer.TokenKind.REGISTER | lexer.TokenKind.REGISTER):
             return Assembler.OpcodeInstruction(None, f"ADD v{node.body[0].value} v{node.body[1].value}")
+        elif args == (lexer.TokenKind.REGISTER | lexer.TokenKind.NUMBER):
+            return Assembler.OpcodeInstruction(None, f"ADD v{node.body[0].value} {node.body[1].value}")
+        elif args == (lexer.TokenKind.INDEX | lexer.TokenKind.REGISTER):
+            return Assembler.OpcodeInstruction(None, f"ADD [I] v{node.body[1].value}")
         else: errors.Unreachable(f"{node}") 
     
     @staticmethod
@@ -77,6 +90,15 @@ class Assembler:
             return Assembler.OpcodeInstruction(None, f"SNE v{node.body[0].value} {node.body[1].value}")
         else: errors.Unreachable(f"{node}") 
     
+    @staticmethod
+    def make_instr_subn(node :ast.ASTNode) -> OpcodeInstruction:
+        VERIFY_LEN(node.body, 2)
+
+        args = node.body[0].kind | node.body[1].kind
+        if args == (lexer.TokenKind.REGISTER | lexer.TokenKind.REGISTER):
+            return Assembler.OpcodeInstruction(None, f"SUBN v{node.body[0].value} v{node.body[1].value}")
+        else: errors.Unreachable(f"{node}") 
+
     @staticmethod
     def make_instr_call(node :ast.ASTNode) -> OpcodeInstruction:
         VERIFY_LEN(node.body, 1)
@@ -142,24 +164,17 @@ class Generator:
 
         asm: Optional[Assembler.OpcodeInstruction] = None
         match node.instr:
-            case lexer.InstrKind.JMP:  
-                asm = Assembler.make_instr_jmp(node)
-            case lexer.InstrKind.LOAD: 
-                asm = Assembler.make_instr_load(node)
-            case lexer.InstrKind.ADD:  
-                asm = Assembler.make_instr_add(node)
-            case lexer.InstrKind.SNE:  
-                asm = Assembler.make_instr_sne(node)
-            case lexer.InstrKind.CALL: 
-                asm = Assembler.make_instr_call(node)
-            case lexer.InstrKind.DRAW: 
-                asm = Assembler.make_instr_draw(node)
-            case lexer.InstrKind.RET:  
-                asm = Assembler.make_instr_ret(node)
-            case lexer.DirectiveKind.MEM:
-                asm = Assembler.make_dir_mem(node)
-            case lexer.DirectiveKind.FONT:
-                asm = Assembler.make_dir_font(node)
+            case lexer.InstrKind.CLS:  asm = Assembler.make_instr_cls(node)
+            case lexer.InstrKind.JMP:  asm = Assembler.make_instr_jmp(node)
+            case lexer.InstrKind.LOAD: asm = Assembler.make_instr_load(node)
+            case lexer.InstrKind.ADD:  asm = Assembler.make_instr_add(node)
+            case lexer.InstrKind.SNE:  asm = Assembler.make_instr_sne(node)
+            case lexer.InstrKind.CALL: asm = Assembler.make_instr_call(node)
+            case lexer.InstrKind.DRAW: asm = Assembler.make_instr_draw(node)
+            case lexer.InstrKind.RET:  asm = Assembler.make_instr_ret(node)
+            case lexer.InstrKind.SUBN: asm = Assembler.make_instr_subn(node)
+            case lexer.DirectiveKind.MEM:  asm = Assembler.make_dir_mem(node)
+            case lexer.DirectiveKind.FONT: asm = Assembler.make_dir_font(node)
             case lexer.DirectiveKind.ASCII: return
             case _: errors.Unreachable(str(node))
         

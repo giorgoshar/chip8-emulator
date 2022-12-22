@@ -1,28 +1,37 @@
-
 jmp main
 .ascii "Hello"
 
-# int8 a := 1
 fn main {
-    load v1, 1
-    load v2  2
-    
-    if v1 != 3 {}
-    add  v1 v2
-    sne  v1, 3
-    call drawSmile
+    call loop_cond
 }
-# fn main {}
 
-fn inf { jmp inf }
-
-fn drawSmile {
-    load    v1, 5
-    load    v2, 5
-    load    [I], l_SMILE
-    draw    v1, v2, 5
+fn loop_cond {
+    load v5 0
+    load v6 50
+    fn loop {
+        load vf v6
+        subn vf v5
+        sne  vf 0
+        jmp end_if
+            load v5 0
+            load v7 7
+            load v8 8
+        fn end_if {
+            call drawnumber
+        }
+        add v5 5
+    }
+    jmp loop
     ret
 }
 
-.font l_SMILE 0x18 0x48 0x08 0x48 0x18, endfont
-#.mem l_SMILE 0x18 0x48 0x08 0x48 0x18
+fn drawnumber {
+    cls
+    load va, 0
+    load vb, 0
+    load [I] 0
+    add  [I] v5
+    draw va vb 5
+    ret
+}
+fn inf { jmp inf }

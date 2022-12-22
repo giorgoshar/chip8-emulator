@@ -6,27 +6,36 @@ from c8.errors import *
 TREE_IDENT_STEP = 4
 
 class NodeKind(Enum):
-    INSTR     = auto()
-    DIRECTIVE = auto()
-    SCOPE     = auto()
-    FUNC_DEF  = auto()
-    PROGRAM   = auto()
-    EXPR      = auto()
-    STMNT     = auto()
-    ERROR     = auto()
-    INVALID   = auto()
+    INSTR         = auto()
+    DIRECTIVE     = auto()
+    SCOPE         = auto()
+    FUNC_DEF      = auto()
+    PROGRAM       = auto()
+    EXPR          = auto()
+    BLOCK         = auto()
+    STMNT         = auto()
+    IF_STMNT      = auto()
+    ERROR         = auto()
+    INVALID       = auto()
 
 class ASTNode:
     def __init__(self, kind: NodeKind):
         self.kind     :NodeKind        = kind
-        self.body     :list[Any] = []
+        self.body     :list[Any]       = []
         self.instr    :Optional[Any]   = None
         self.name     :str             = ""
         self.children :list[Any]       = []
 
+        self.value     :Optional[Any]     = None
+        self.leftleaf  :Optional[ASTNode] = None
+        self.rightleaf :Optional[ASTNode] = None
+
     def add_children(self, children: 'ASTNode'):
         self.children.append(children)
-    
+    def set_left(self, node:'ASTNode') -> None:
+        self.left = node
+    def set_right(self, node:'ASTNode') -> None:
+        self.right = node
     def print(self, indent :int = 0) -> None:
         raise NotImplementedError
 
@@ -66,13 +75,26 @@ class ScopeNode(ASTNode):
             children.print(indent + TREE_IDENT_STEP)
 
     def __str__(self):
-        return f"<ScopeNode({self.name})>"
+        return f"<ScopeNode({self.name}, {len(self.children)})>"
+
+class Expression(ASTNode):
+    def __init__(self, left: Optional[ASTNode], value: Any, right: Optional[ASTNode]):
+        ASTNode.__init__(self, NodeKind.EXPR)
+        self.leftleaf  = left
+        self.value     = value
+        self.rightleaf = right
 
 class ProgramNode(ScopeNode): pass
 
 class FunctionDefinition(ScopeNode):
     def __str__(self):
         return f"<FunctionDefinition({self.name})>"
+
+class IfStatement(ASTNode):
+    def __init__(self, expr: Expression, block :ScopeNode):
+        ASTNode.__init__(self, NodeKind.IF_STMNT)
+        self.expr  :Expression = expr
+        self.block :ScopeNode  = block
 
 if __name__ == '__main__':
     pass

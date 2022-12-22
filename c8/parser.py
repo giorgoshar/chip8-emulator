@@ -19,7 +19,7 @@ class Parser:
         lex.reset_index()
         Program = ProgramNode('Program')
         self.parse(lex, Program)
-        # Program.print()
+        Program.print()
         return Program
 
     # parse instructions
@@ -62,6 +62,16 @@ class Parser:
         self.expected([TokenKind.REGISTER, TokenKind.NUMBER], arg2)
 
         return Instruction(InstrKind.SNE, [arg1, arg2])
+    
+    def parse_instr_subn(self, lex: Lexer) -> Instruction:
+        
+        arg1 = lex.next()
+        self.expected([TokenKind.REGISTER], arg1)
+        
+        arg2 = lex.next()
+        self.expected([TokenKind.REGISTER, TokenKind.NUMBER], arg2)
+
+        return Instruction(InstrKind.SUBN, [arg1, arg2])
 
     def parse_instr_draw(self, lex: Lexer) -> Instruction:
         arg1 = lex.next()
@@ -129,6 +139,8 @@ class Parser:
             case InstrKind.ADD:  return self.parse_instr_add(lex)
             case InstrKind.SNE:  return self.parse_instr_sne(lex)
             case InstrKind.DRAW: return self.parse_instr_draw(lex)
+            case InstrKind.SUBN: return self.parse_instr_subn(lex)
+            case InstrKind.CLS:  return Instruction(InstrKind.CLS, [])
             case InstrKind.RET:  return Instruction(InstrKind.RET, [])
             case _: raise Unreachable(str(token))
     
@@ -152,16 +164,40 @@ class Parser:
         self.expected([TokenKind.OBRACKET],   lex.next())
         lex.next()
 
-        node: FunctionDefinition = FunctionDefinition(identifier.value, identifier)
-        self.parse(lex, node)
+        fn_node: FunctionDefinition = FunctionDefinition(identifier.value, identifier)
+        self.parse(lex, fn_node)
         self.expected([TokenKind.CBRACKET], lex.peek())
-        return node
+        return fn_node
 
     def parse_if(self, lex: Lexer, node: ASTNode):
-        console.warn(lex.next())
-        console.warn(lex.next())
-        console.warn(lex.next())
-        console.warn(lex.next())
+
+        operand1 = lex.next()
+        self.expected([TokenKind.REGISTER], operand1)
+
+        operator = lex.next()
+        self.expected([TokenKind.OPERATOR], operator)
+
+        operand2 = lex.next()
+        self.expected([TokenKind.NUMBER], operand2)
+
+        expr1 = Expression(None, operand1, None)
+        expr2 = Expression(None, operand2, None)
+
+        expr = Expression(expr1, operator, expr2)
+        console.info(f"Expr -> {expr}")
+
+        end_expr = lex.next()
+        self.expected([TokenKind.OBRACKET], end_expr)
+        lex.next()
+
+        body_block :ScopeNode = ScopeNode('if_stmt_01')
+        while lex.peek().kind != TokenKind.CBRACKET:
+            if lex.peek().kind == TokenKind.EOF:
+                self.expected([TokenKind.CBRACKET], lex.peek())
+            self.parse(lex, body_block)
+        if_node: IfStatement = IfStatement(expr, body_block)
+
+        return if_node
 
     def parse(self, lex: Lexer, node: ScopeNode) -> ASTNode:
         while lex.has_more():
@@ -187,9 +223,8 @@ class Parser:
                     fn = self.parse_function(lex, node)
                     node.add_children(fn)
                 case TokenKind.IF:
-                    iff = self.parse_if(lex, node)
-                    print(iff)
-                    raise NotImplementedError
+                    eef = self.parse_if(lex, node)
+                    node.add_children(eef)
                 case TokenKind.CBRACKET:
                     break
                 case _: raise Unreachable(str(token))
